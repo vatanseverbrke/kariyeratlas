@@ -76,6 +76,13 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
+function isExpired(deadline: string | null) {
+  if (!deadline) return false;
+
+  const today = new Date().toISOString().slice(0, 10);
+  return deadline < today;
+}
+
 function statusClass(status: string) {
   if (status === "active") return "bg-emerald-500/15 text-emerald-300";
   if (status === "draft") return "bg-amber-500/15 text-amber-300";
@@ -422,6 +429,12 @@ export default async function AdminFirsatlarPage({ searchParams }: PageProps) {
                           {opportunity.is_featured ? (
                             <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs text-emerald-300">
                               Öne çıkan
+                            </span>
+                          ) : null}
+
+                          {isExpired(opportunity.deadline) ? (
+                            <span className="rounded-full bg-red-500/15 px-3 py-1 text-xs text-red-300">
+                              Süresi geçti
                             </span>
                           ) : null}
                         </div>
