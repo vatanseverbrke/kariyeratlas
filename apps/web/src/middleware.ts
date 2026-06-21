@@ -25,6 +25,17 @@ export function middleware(request: NextRequest) {
       const password = passwordParts.join(":");
 
       if (username === adminUsername && password === adminPassword) {
+        const pathname = request.nextUrl.pathname;
+
+        if (
+          pathname === "/admin/fırsatlar" ||
+          pathname === "/admin/f%C4%B1rsatlar"
+        ) {
+          const url = request.nextUrl.clone();
+          url.pathname = "/admin/firsatlar";
+          return NextResponse.redirect(url);
+        }
+
         return NextResponse.next();
       }
     }
