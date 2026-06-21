@@ -34,6 +34,12 @@ const focusAreas = [
   "Eğitim ve yarışma kaynakları",
 ];
 
+const earlyAccessBenefits = [
+  "İlk kullanıcılar arasında yer al",
+  "Kamu, belediye ve özel sektör fırsatlarından erken haberdar ol",
+  "Planlama, peyzaj, mimarlık ve CBS alanlarına özel takip al",
+];
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -62,6 +68,9 @@ export default function Home() {
             <a href="#meslekler" className="transition hover:text-white">
               Meslekler
             </a>
+            <a href="#erken-erisim" className="transition hover:text-white">
+              Erken Erişim
+            </a>
             <a href="#vizyon" className="transition hover:text-white">
               Vizyon
             </a>
@@ -86,10 +95,10 @@ export default function Home() {
 
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <a
-                href="#firsatlar"
+                href="#erken-erisim"
                 className="rounded-full bg-blue-600 px-7 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
               >
-                Platformu keşfet
+                Erken erişim talep et
               </a>
               <a
                 href="#vizyon"
@@ -159,6 +168,79 @@ export default function Home() {
               </p>
             </div>
           ))}
+        </section>
+
+        <section
+          id="erken-erisim"
+          className="grid gap-10 border-t border-white/10 py-16 lg:grid-cols-[0.9fr_1.1fr]"
+        >
+          <div>
+            <p className="text-sm font-medium text-blue-200">
+              Yakında yayında
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white md:text-4xl">
+              İlk kullanıcılar arasında yerini al.
+            </h2>
+            <p className="mt-4 max-w-2xl leading-8 text-slate-300">
+              KariyerAtlas şu anda geliştirme aşamasında. Platform yayına
+              hazırlandığında şehir planlama, peyzaj mimarlığı, mimarlık,
+              CBS/GIS ve diğer teknik meslek fırsatlarından erken haberdar
+              olmak için e-posta adresini bırakabilirsin.
+            </p>
+
+            <div className="mt-8 space-y-3">
+              {earlyAccessBenefits.map((item) => (
+                <div key={item} className="flex items-center gap-3">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-xs text-emerald-300">
+                    ✓
+                  </span>
+                  <span className="text-sm text-slate-300">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-blue-400/20 bg-blue-400/[0.06] p-6 shadow-2xl shadow-blue-950/40">
+            <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/80 p-6">
+              <p className="text-sm font-medium text-slate-400">
+                Erken erişim listesi
+              </p>
+              <h3 className="mt-2 text-2xl font-semibold text-white">
+                KariyerAtlas yayına hazırlandığında haberdar ol.
+              </h3>
+
+              <form className="mt-6 space-y-4">
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="mb-2 block text-sm text-slate-300"
+                  >
+                    E-posta adresin
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="ornek@mail.com"
+                    className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
+                >
+                  Erken erişim talep et
+                </button>
+
+                <p className="text-xs leading-5 text-slate-500">
+                  Bu alan şu anda görsel ön kayıt alanıdır. Gerçek kayıt sistemi
+                  sonraki aşamada Supabase veya form altyapısı ile aktif
+                  edilecektir.
+                </p>
+              </form>
+            </div>
+          </div>
         </section>
 
         <section
