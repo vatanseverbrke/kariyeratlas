@@ -186,16 +186,10 @@ export default async function Home({ searchParams }: HomeProps) {
               Kariyerini keşfet, fırsatları yakala.
             </h1>
 
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-              KariyerAtlas; iş ilanları, kamu alımları, belediye duyuruları,
-              özel sektör fırsatları, eğitimler, yarışmalar ve mesleki gelişim
-              kaynaklarını tek merkezde toplayan akıllı kariyer platformudur.
-            </p>
-
             <form
               action="/firsatlar"
               method="get"
-              className="mt-10 max-w-2xl rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-2 backdrop-blur"
+              className="mt-8 max-w-2xl rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-2 backdrop-blur"
             >
               <div className="flex flex-col gap-2 sm:flex-row">
                 <input
@@ -213,6 +207,12 @@ export default async function Home({ searchParams }: HomeProps) {
                 </button>
               </div>
             </form>
+
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+              KariyerAtlas; iş ilanları, kamu alımları, belediye duyuruları,
+              özel sektör fırsatları, eğitimler, yarışmalar ve mesleki gelişim
+              kaynaklarını tek merkezde toplayan akıllı kariyer platformudur.
+            </p>
 
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <a
