@@ -192,10 +192,32 @@ export default async function Home({ searchParams }: HomeProps) {
               kaynaklarını tek merkezde toplayan akıllı kariyer platformudur.
             </p>
 
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+            <form
+              action="/firsatlar"
+              method="get"
+              className="mt-10 max-w-2xl rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-2 backdrop-blur"
+            >
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  name="q"
+                  type="search"
+                  placeholder="Fırsat ara: şehir plancısı, CBS, staj, belediye..."
+                  className="min-h-14 flex-1 rounded-2xl border border-white/10 bg-slate-950/70 px-5 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400"
+                />
+
+                <button
+                  type="submit"
+                  className="rounded-2xl bg-blue-600 px-7 py-4 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
+                >
+                  Fırsat ara
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <a
                 href="#erken-erisim"
-                className="rounded-full bg-blue-600 px-7 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
+                className="rounded-full bg-white/10 px-7 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/15"
               >
                 Erken erişim talep et
               </a>
@@ -203,7 +225,7 @@ export default async function Home({ searchParams }: HomeProps) {
                 href="/firsatlar"
                 className="rounded-full border border-white/15 px-7 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10"
               >
-                Fırsatları incele
+                Tüm fırsatları incele
               </a>
             </div>
 
