@@ -25,15 +25,28 @@ const professions = [
   "Çevre Mühendisliği",
 ];
 
+const focusAreas = [
+  "Belediyeler",
+  "Bakanlıklar",
+  "Meslek odaları",
+  "Üniversiteler",
+  "Özel sektör firmaları",
+  "Eğitim ve yarışma kaynakları",
+];
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <section className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-8 lg:px-8">
         <nav className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 font-bold">
-              KA
+            <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-slate-900 ring-1 ring-white/10">
+              <span className="text-sm font-bold text-white">KA</span>
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500" />
+              <span className="absolute bottom-2 left-2 h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="absolute h-8 w-8 rounded-full border border-cyan-400/40" />
             </div>
+
             <div>
               <p className="text-lg font-semibold tracking-tight">
                 KariyerAtlas
@@ -43,13 +56,13 @@ export default function Home() {
           </div>
 
           <div className="hidden items-center gap-6 text-sm text-slate-300 md:flex">
-            <a href="#firsatlar" className="hover:text-white">
+            <a href="#firsatlar" className="transition hover:text-white">
               Fırsatlar
             </a>
-            <a href="#meslekler" className="hover:text-white">
+            <a href="#meslekler" className="transition hover:text-white">
               Meslekler
             </a>
-            <a href="#vizyon" className="hover:text-white">
+            <a href="#vizyon" className="transition hover:text-white">
               Vizyon
             </a>
           </div>
@@ -137,7 +150,7 @@ export default function Home() {
           {professions.map((item) => (
             <div
               key={item}
-              className="rounded-3xl border border-white/10 bg-white/[0.03] p-6"
+              className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-blue-400/40 hover:bg-white/[0.06]"
             >
               <p className="text-lg font-semibold">{item}</p>
               <p className="mt-3 text-sm leading-6 text-slate-400">
@@ -150,18 +163,38 @@ export default function Home() {
 
         <section
           id="vizyon"
-          className="border-t border-white/10 py-12 text-slate-300"
+          className="grid gap-10 border-t border-white/10 py-12 lg:grid-cols-[1fr_0.85fr]"
         >
-          <h2 className="text-3xl font-semibold text-white">
-            Dağınık kariyer kaynaklarını tek merkezde topluyoruz.
-          </h2>
-          <p className="mt-4 max-w-4xl leading-8">
-            KariyerAtlas, teknik mesleklerden başlayarak tüm meslek gruplarına
-            genişleyebilecek şekilde tasarlanıyor. Hedefimiz; kullanıcıların
-            belediyeler, bakanlıklar, meslek odaları, özel sektör firmaları,
-            üniversiteler ve eğitim kaynakları arasında kaybolmadan kendilerine
-            uygun fırsatları zamanında keşfetmesini sağlamak.
-          </p>
+          <div>
+            <h2 className="text-3xl font-semibold text-white">
+              Dağınık kariyer kaynaklarını tek merkezde topluyoruz.
+            </h2>
+            <p className="mt-4 max-w-4xl leading-8 text-slate-300">
+              KariyerAtlas, teknik mesleklerden başlayarak tüm meslek gruplarına
+              genişleyebilecek şekilde tasarlanıyor. Hedefimiz; kullanıcıların
+              belediyeler, bakanlıklar, meslek odaları, özel sektör firmaları,
+              üniversiteler ve eğitim kaynakları arasında kaybolmadan
+              kendilerine uygun fırsatları zamanında keşfetmesini sağlamak.
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+            <p className="text-sm font-medium text-blue-200">
+              İlk kaynak kapsamı
+            </p>
+
+            <div className="mt-5 grid gap-3">
+              {focusAreas.map((item) => (
+                <div
+                  key={item}
+                  className="flex items-center gap-3 rounded-2xl bg-slate-900/70 px-4 py-3"
+                >
+                  <span className="h-2 w-2 rounded-full bg-cyan-400" />
+                  <span className="text-sm text-slate-300">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
       </section>
     </main>
