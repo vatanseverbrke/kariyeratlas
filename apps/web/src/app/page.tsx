@@ -1,3 +1,5 @@
+import { createClient } from "@supabase/supabase-js";
+
 const stats = [
   { label: "Fırsat türü", value: "12+" },
   { label: "Öncelikli meslek", value: "7" },
@@ -55,11 +57,30 @@ const valueCards = [
   },
 ];
 
+type FeaturedOpportunity = {
+  id: string;
+  title: string;
+  organization: string;
+  opportunity_type: string;
+  profession_area: string | null;
+  city: string | null;
+  deadline: string | null;
+  source_url: string;
+};
+
 type HomeProps = {
   searchParams?: Promise<{
     early_access?: string;
   }>;
 };
+
+function formatDeadline(value: string | null) {
+  if (!value) return "Belirtilmedi";
+
+  return new Intl.DateTimeFormat("tr-TR", {
+    dateStyle: "medium",
+  }).format(new Date(value));
+}
 
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
@@ -70,7 +91,8 @@ export default async function Home({ searchParams }: HomeProps) {
       ? {
           title: "Kaydın alındı.",
           text: "KariyerAtlas yayına hazırlandığında seni bilgilendireceğiz.",
-          className: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+          className:
+            "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
         }
       : earlyAccessStatus === "invalid_email"
         ? {
@@ -85,6 +107,33 @@ export default async function Home({ searchParams }: HomeProps) {
               className: "border-red-400/30 bg-red-400/10 text-red-200",
             }
           : null;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  let featuredOpportunities: FeaturedOpportunity[] = [];
+
+  if (supabaseUrl && serviceRoleKey) {
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+      },
+    });
+
+    const { data, error } = await supabase
+      .from("opportunities")
+      .select(
+        "id,title,organization,opportunity_type,profession_area,city,deadline,source_url"
+      )
+      .eq("status", "active")
+      .eq("is_featured", true)
+      .order("created_at", { ascending: false })
+      .limit(3);
+
+    if (!error) {
+      featuredOpportunities = (data || []) as FeaturedOpportunity[];
+    }
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
@@ -208,6 +257,83 @@ export default async function Home({ searchParams }: HomeProps) {
             </div>
           </div>
         </div>
+
+        {featuredOpportunities.length > 0 ? (
+          <section className="border-t border-white/10 py-12">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-200">
+                  Güncel fırsatlar
+                </p>
+                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white md:text-4xl">
+                  Öne Çıkan Fırsatlar
+                </h2>
+                <p className="mt-4 max-w-2xl leading-8 text-slate-300">
+                  Admin panelde öne çıkan olarak işaretlenen aktif fırsatlar
+                  burada listelenir.
+                </p>
+              </div>
+
+              <a
+                href="/firsatlar"
+                className="rounded-full border border-white/15 px-6 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Tüm fırsatları gör
+              </a>
+            </div>
+
+            <div className="mt-8 grid gap-5 md:grid-cols-3">
+              {featuredOpportunities.map((opportunity) => (
+                <article
+                  key={opportunity.id}
+                  className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur transition hover:border-blue-400/40 hover:bg-white/[0.07]"
+                >
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs text-blue-300">
+                      {opportunity.opportunity_type}
+                    </span>
+
+                    {opportunity.city ? (
+                      <span className="rounded-full bg-white/[0.07] px-3 py-1 text-xs text-slate-300">
+                        {opportunity.city}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <h3 className="mt-5 text-xl font-semibold text-white">
+                    {opportunity.title}
+                  </h3>
+
+                  <p className="mt-2 text-sm text-slate-400">
+                    {opportunity.organization}
+                  </p>
+
+                  {opportunity.profession_area ? (
+                    <p className="mt-4 text-sm text-slate-300">
+                      {opportunity.profession_area}
+                    </p>
+                  ) : null}
+
+                  <p className="mt-4 text-sm text-slate-400">
+                    Son başvuru: {" "}
+                    <span className="text-slate-200">
+                      {formatDeadline(opportunity.deadline)}
+                    </span>
+                  </p>
+
+                  <a
+                    href={opportunity.source_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-6 block rounded-2xl bg-white px-5 py-3 text-center text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+                  >
+                    Fırsatı incele
+                  </a>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section
           id="meslekler"
