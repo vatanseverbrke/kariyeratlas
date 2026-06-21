@@ -328,7 +328,14 @@ export default async function Home({ searchParams }: HomeProps) {
 
                 <p className="text-xs leading-5 text-slate-500">
                   E-posta adresin yalnızca KariyerAtlas erken erişim ve ürün
-                  bilgilendirmeleri için kullanılacaktır.
+                  bilgilendirmeleri için kullanılacaktır. Detaylar için{" "}
+                  <a
+                    href="/gizlilik-politikasi"
+                    className="text-blue-300 hover:text-blue-200"
+                  >
+                    Gizlilik Politikası
+                  </a>{" "}
+                  sayfasını inceleyebilirsin.
                 </p>
               </form>
             </div>
@@ -370,6 +377,27 @@ export default async function Home({ searchParams }: HomeProps) {
             </div>
           </div>
         </section>
+
+        <footer className="border-t border-white/10 py-8">
+          <div className="flex flex-col gap-4 text-sm text-slate-400 md:flex-row md:items-center md:justify-between">
+            <p>© 2026 KariyerAtlas. Tüm hakları saklıdır.</p>
+
+            <div className="flex flex-wrap gap-4">
+              <a
+                href="/gizlilik-politikasi"
+                className="transition hover:text-white"
+              >
+                Gizlilik Politikası
+              </a>
+              <a
+                href="/kullanim-kosullari"
+                className="transition hover:text-white"
+              >
+                Kullanım Koşulları
+              </a>
+            </div>
+          </div>
+        </footer>
       </section>
     </main>
   );
