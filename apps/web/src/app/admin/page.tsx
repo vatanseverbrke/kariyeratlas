@@ -57,7 +57,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       ? {
           title: "Durum güncellendi.",
           text: "Kayıt durumu başarıyla değiştirildi.",
-          className: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+          className:
+            "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
         }
       : statusUpdate === "error" ||
           statusUpdate === "config_error" ||
@@ -114,6 +115,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <a
+              href="/admin/firsatlar"
+              className="rounded-2xl border border-white/10 px-5 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
+            >
+              Fırsat yönetimi
+            </a>
+
             <a
               href="/admin/export"
               className="rounded-2xl bg-blue-600 px-5 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
