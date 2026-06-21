@@ -40,7 +40,37 @@ const earlyAccessBenefits = [
   "Planlama, peyzaj, mimarlık ve CBS alanlarına özel takip al",
 ];
 
-export default function Home() {
+type HomeProps = {
+  searchParams?: Promise<{
+    early_access?: string;
+  }>;
+};
+
+export default async function Home({ searchParams }: HomeProps) {
+  const params = await searchParams;
+  const earlyAccessStatus = params?.early_access;
+
+  const feedback =
+    earlyAccessStatus === "success"
+      ? {
+          title: "Kaydın alındı.",
+          text: "KariyerAtlas yayına hazırlandığında seni bilgilendireceğiz.",
+          className: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+        }
+      : earlyAccessStatus === "invalid_email"
+        ? {
+            title: "E-posta adresini kontrol et.",
+            text: "Geçerli bir e-posta adresi girerek tekrar deneyebilirsin.",
+            className: "border-amber-400/30 bg-amber-400/10 text-amber-200",
+          }
+        : earlyAccessStatus === "error" || earlyAccessStatus === "config_error"
+          ? {
+              title: "Kayıt alınamadı.",
+              text: "Kısa bir süre sonra tekrar deneyebilirsin.",
+              className: "border-red-400/30 bg-red-400/10 text-red-200",
+            }
+          : null;
+
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <section className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-8 lg:px-8">
@@ -209,7 +239,20 @@ export default function Home() {
                 KariyerAtlas yayına hazırlandığında haberdar ol.
               </h3>
 
-              <form className="mt-6 space-y-4">
+              {feedback ? (
+                <div
+                  className={`mt-5 rounded-2xl border px-4 py-3 text-sm ${feedback.className}`}
+                >
+                  <p className="font-semibold">{feedback.title}</p>
+                  <p className="mt-1 opacity-90">{feedback.text}</p>
+                </div>
+              ) : null}
+
+              <form
+                action="/api/early-access"
+                method="post"
+                className="mt-6 space-y-4"
+              >
                 <div>
                   <label
                     htmlFor="email"
@@ -221,9 +264,59 @@ export default function Home() {
                     id="email"
                     name="email"
                     type="email"
+                    required
                     placeholder="ornek@mail.com"
                     className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400"
                   />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="profession"
+                      className="mb-2 block text-sm text-slate-300"
+                    >
+                      Meslek / alan
+                    </label>
+                    <select
+                      id="profession"
+                      name="profession"
+                      className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+                      defaultValue=""
+                    >
+                      <option value="" className="bg-slate-950">
+                        Seçiniz
+                      </option>
+                      {professions.map((profession) => (
+                        <option
+                          key={profession}
+                          value={profession}
+                          className="bg-slate-950"
+                        >
+                          {profession}
+                        </option>
+                      ))}
+                      <option value="Diğer" className="bg-slate-950">
+                        Diğer
+                      </option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="city"
+                      className="mb-2 block text-sm text-slate-300"
+                    >
+                      Şehir
+                    </label>
+                    <input
+                      id="city"
+                      name="city"
+                      type="text"
+                      placeholder="Örn. İstanbul"
+                      className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400"
+                    />
+                  </div>
                 </div>
 
                 <button
@@ -234,9 +327,8 @@ export default function Home() {
                 </button>
 
                 <p className="text-xs leading-5 text-slate-500">
-                  Bu alan şu anda görsel ön kayıt alanıdır. Gerçek kayıt sistemi
-                  sonraki aşamada Supabase veya form altyapısı ile aktif
-                  edilecektir.
+                  E-posta adresin yalnızca KariyerAtlas erken erişim ve ürün
+                  bilgilendirmeleri için kullanılacaktır.
                 </p>
               </form>
             </div>
