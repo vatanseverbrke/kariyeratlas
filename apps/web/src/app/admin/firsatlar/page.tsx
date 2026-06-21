@@ -20,6 +20,8 @@ type Opportunity = {
 type PageProps = {
   searchParams?: Promise<{
     opportunity_create?: string;
+    opportunity_update?: string;
+    opportunity_delete?: string;
   }>;
 };
 
@@ -80,9 +82,57 @@ function statusClass(status: string) {
   return "bg-slate-500/15 text-slate-300";
 }
 
+function getFeedback(params: Awaited<PageProps["searchParams"]>) {
+  if (params?.opportunity_create === "success") {
+    return {
+      title: "Fırsat eklendi.",
+      text: "Yeni fırsat başarıyla kaydedildi.",
+      className: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+    };
+  }
+
+  if (params?.opportunity_update === "success") {
+    return {
+      title: "Fırsat güncellendi.",
+      text: "Fırsat durumu ve öne çıkan bilgisi başarıyla güncellendi.",
+      className: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+    };
+  }
+
+  if (params?.opportunity_delete === "success") {
+    return {
+      title: "Fırsat silindi.",
+      text: "Seçilen fırsat kalıcı olarak silindi.",
+      className: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+    };
+  }
+
+  if (params?.opportunity_create === "missing_fields") {
+    return {
+      title: "Eksik bilgi var.",
+      text: "Başlık, kurum, fırsat türü ve kaynak linki zorunludur.",
+      className: "border-amber-400/30 bg-amber-400/10 text-amber-200",
+    };
+  }
+
+  if (
+    params?.opportunity_create ||
+    params?.opportunity_update ||
+    params?.opportunity_delete
+  ) {
+    return {
+      title: "İşlem tamamlanamadı.",
+      text: "Kısa bir süre sonra tekrar deneyebilirsin.",
+      className: "border-red-400/30 bg-red-400/10 text-red-200",
+    };
+  }
+
+  return null;
+}
+
 export default async function AdminFirsatlarPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const createStatus = params?.opportunity_create;
+  const feedback = getFeedback(params);
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -112,28 +162,6 @@ export default async function AdminFirsatlarPage({ searchParams }: PageProps) {
 
   const opportunities = (data || []) as Opportunity[];
 
-  const feedback =
-    createStatus === "success"
-      ? {
-          title: "Fırsat eklendi.",
-          text: "Yeni fırsat başarıyla kaydedildi.",
-          className:
-            "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
-        }
-      : createStatus === "missing_fields"
-        ? {
-            title: "Eksik bilgi var.",
-            text: "Başlık, kurum, fırsat türü ve kaynak linki zorunludur.",
-            className: "border-amber-400/30 bg-amber-400/10 text-amber-200",
-          }
-        : createStatus
-          ? {
-              title: "Fırsat eklenemedi.",
-              text: "Kısa bir süre sonra tekrar deneyebilirsin.",
-              className: "border-red-400/30 bg-red-400/10 text-red-200",
-            }
-          : null;
-
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-white lg:px-8">
       <section className="mx-auto max-w-7xl">
@@ -151,8 +179,7 @@ export default async function AdminFirsatlarPage({ searchParams }: PageProps) {
             </h1>
 
             <p className="mt-3 text-slate-400">
-              Yeni fırsat ekle, mevcut fırsatları takip et ve canlı fırsat
-              sayfasına aktar.
+              Yeni fırsat ekle, mevcut fırsatları güncelle, arşivle veya sil.
             </p>
           </div>
 
@@ -193,6 +220,7 @@ export default async function AdminFirsatlarPage({ searchParams }: PageProps) {
         <section className="mt-8 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
             <h2 className="text-2xl font-semibold">Yeni fırsat ekle</h2>
+
             <p className="mt-2 text-sm leading-6 text-slate-400">
               Zorunlu alanlar: başlık, kurum, fırsat türü ve kaynak linki.
             </p>
@@ -430,6 +458,60 @@ export default async function AdminFirsatlarPage({ searchParams }: PageProps) {
                         {opportunity.description}
                       </p>
                     ) : null}
+
+                    <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Fırsat ayarları
+                      </p>
+
+                      <form
+                        action={`/admin/opportunities/${opportunity.id}/update`}
+                        method="post"
+                        className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]"
+                      >
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <select
+                            name="status"
+                            defaultValue={opportunity.status}
+                            className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white outline-none transition focus:border-blue-400"
+                          >
+                            <option value="active">active</option>
+                            <option value="draft">draft</option>
+                            <option value="archived">archived</option>
+                          </select>
+
+                          <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-slate-300">
+                            <input
+                              type="checkbox"
+                              name="is_featured"
+                              defaultChecked={opportunity.is_featured}
+                              className="h-4 w-4 accent-blue-600"
+                            />
+                            Öne çıkan
+                          </label>
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-500"
+                        >
+                          Güncelle
+                        </button>
+                      </form>
+
+                      <form
+                        action={`/admin/opportunities/${opportunity.id}/delete`}
+                        method="post"
+                        className="mt-3"
+                      >
+                        <button
+                          type="submit"
+                          className="w-full rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-400/20"
+                        >
+                          Kalıcı olarak sil
+                        </button>
+                      </form>
+                    </div>
 
                     <p className="mt-4 text-xs text-slate-500">
                       Eklenme: {formatDateTime(opportunity.created_at)}
