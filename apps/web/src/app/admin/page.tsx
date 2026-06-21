@@ -64,9 +64,18 @@ export default async function AdminPage() {
             </p>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-6 py-4">
-            <p className="text-sm text-slate-400">Toplam kayıt</p>
-            <p className="mt-1 text-3xl font-semibold">{signups.length}</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <a
+              href="/admin/export"
+              className="rounded-2xl bg-blue-600 px-5 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
+            >
+              CSV indir
+            </a>
+
+            <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-6 py-4">
+              <p className="text-sm text-slate-400">Toplam kayıt</p>
+              <p className="mt-1 text-3xl font-semibold">{signups.length}</p>
+            </div>
           </div>
         </div>
 
