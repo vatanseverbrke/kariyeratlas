@@ -142,8 +142,8 @@ export default async function Home({ searchParams }: HomeProps) {
       <div className="pointer-events-none absolute bottom-40 left-[-12rem] h-[28rem] w-[28rem] rounded-full bg-emerald-500/10 blur-3xl" />
 
       <section className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-6 lg:px-8">
-        <nav className="sticky top-4 z-20 flex items-center justify-between rounded-full border border-white/10 bg-slate-950/70 px-5 py-3 backdrop-blur-xl">
-          <div className="flex items-center gap-3">
+        <nav className="sticky top-4 z-20 flex items-center gap-5 rounded-full border border-white/10 bg-slate-950/70 px-5 py-3 backdrop-blur-xl">
+          <a href="/" className="flex shrink-0 items-center gap-3">
             <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-slate-900 ring-1 ring-white/10">
               <span className="text-sm font-bold text-white">KA</span>
               <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500" />
@@ -157,9 +157,31 @@ export default async function Home({ searchParams }: HomeProps) {
               </p>
               <p className="text-xs text-slate-400">kariyeratlas.com</p>
             </div>
-          </div>
+          </a>
 
-          <div className="hidden items-center gap-6 text-sm text-slate-300 md:flex">
+          <form
+            action="/firsatlar"
+            method="get"
+            className="mx-4 hidden flex-1 lg:block"
+          >
+            <div className="flex rounded-full border border-white/10 bg-white/[0.04] p-1">
+              <input
+                name="q"
+                type="search"
+                placeholder="Fırsat ara: CBS, staj, belediye..."
+                className="min-h-11 flex-1 rounded-full bg-transparent px-5 text-sm text-white outline-none placeholder:text-slate-500"
+              />
+
+              <button
+                type="submit"
+                className="rounded-full bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-500"
+              >
+                Ara
+              </button>
+            </div>
+          </form>
+
+          <div className="ml-auto hidden shrink-0 items-center gap-6 text-sm text-slate-300 md:flex">
             <a href="/firsatlar" className="transition hover:text-white">
               Fırsatlar
             </a>
@@ -185,28 +207,6 @@ export default async function Home({ searchParams }: HomeProps) {
             <h1 className="max-w-4xl text-5xl font-semibold tracking-tight text-white md:text-7xl">
               Kariyerini keşfet, fırsatları yakala.
             </h1>
-
-            <form
-              action="/firsatlar"
-              method="get"
-              className="mt-8 max-w-2xl rounded-[1.75rem] border border-white/10 bg-white/[0.05] p-2 backdrop-blur"
-            >
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <input
-                  name="q"
-                  type="search"
-                  placeholder="Fırsat ara: şehir plancısı, CBS, staj, belediye..."
-                  className="min-h-14 flex-1 rounded-2xl border border-white/10 bg-slate-950/70 px-5 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400"
-                />
-
-                <button
-                  type="submit"
-                  className="rounded-2xl bg-blue-600 px-7 py-4 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
-                >
-                  Fırsat ara
-                </button>
-              </div>
-            </form>
 
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
               KariyerAtlas; iş ilanları, kamu alımları, belediye duyuruları,
