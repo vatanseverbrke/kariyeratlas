@@ -40,6 +40,21 @@ const earlyAccessBenefits = [
   "Planlama, peyzaj, mimarlık ve CBS alanlarına özel takip al",
 ];
 
+const valueCards = [
+  {
+    title: "Dağınık kaynakları toplar",
+    text: "Kamu, belediye, özel sektör, eğitim, burs ve yarışma duyurularını tek merkezde takip etmeyi hedefler.",
+  },
+  {
+    title: "Mesleğe göre odaklanır",
+    text: "İlk fazda planlama, peyzaj, mimarlık, CBS ve teknik meslek gruplarına öncelik verir.",
+  },
+  {
+    title: "Zamanında haberdar eder",
+    text: "Son başvuru tarihleri ve yeni fırsatlar için kullanıcıyı geç kalmadan bilgilendirmeyi amaçlar.",
+  },
+];
+
 type HomeProps = {
   searchParams?: Promise<{
     early_access?: string;
@@ -72,9 +87,13 @@ export default async function Home({ searchParams }: HomeProps) {
           : null;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <section className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-8 lg:px-8">
-        <nav className="flex items-center justify-between">
+    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[36rem] w-[36rem] -translate-x-1/2 rounded-full bg-blue-600/20 blur-3xl" />
+      <div className="pointer-events-none absolute right-[-12rem] top-40 h-[28rem] w-[28rem] rounded-full bg-cyan-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-40 left-[-12rem] h-[28rem] w-[28rem] rounded-full bg-emerald-500/10 blur-3xl" />
+
+      <section className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-6 lg:px-8">
+        <nav className="sticky top-4 z-20 flex items-center justify-between rounded-full border border-white/10 bg-slate-950/70 px-5 py-3 backdrop-blur-xl">
           <div className="flex items-center gap-3">
             <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-slate-900 ring-1 ring-white/10">
               <span className="text-sm font-bold text-white">KA</span>
@@ -107,10 +126,11 @@ export default async function Home({ searchParams }: HomeProps) {
           </div>
         </nav>
 
-        <div className="grid flex-1 items-center gap-12 py-20 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="grid flex-1 items-center gap-12 py-20 lg:grid-cols-[1.08fr_0.92fr]">
           <div>
-            <div className="mb-6 inline-flex rounded-full border border-blue-400/30 bg-blue-400/10 px-4 py-2 text-sm text-blue-200">
-              Kamu, özel sektör ve mesleki fırsatlar tek platformda
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-400/10 px-4 py-2 text-sm text-blue-200">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              Erken erişim listesi açık
             </div>
 
             <h1 className="max-w-4xl text-5xl font-semibold tracking-tight text-white md:text-7xl">
@@ -142,7 +162,7 @@ export default async function Home({ searchParams }: HomeProps) {
               {stats.map((item) => (
                 <div
                   key={item.label}
-                  className="rounded-3xl border border-white/10 bg-white/[0.03] p-5"
+                  className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur"
                 >
                   <p className="text-3xl font-semibold">{item.value}</p>
                   <p className="mt-1 text-xs text-slate-400">{item.label}</p>
@@ -151,8 +171,8 @@ export default async function Home({ searchParams }: HomeProps) {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-blue-950/40">
-            <div className="rounded-[1.5rem] bg-slate-900 p-6">
+          <div className="rounded-[2rem] border border-white/10 bg-white/[0.05] p-5 shadow-2xl shadow-blue-950/40 backdrop-blur">
+            <div className="rounded-[1.5rem] bg-slate-900/90 p-6">
               <div className="mb-6 flex items-center justify-between">
                 <div>
                   <p className="text-sm text-slate-400">Akıllı fırsat akışı</p>
@@ -169,7 +189,7 @@ export default async function Home({ searchParams }: HomeProps) {
                 {opportunityTypes.map((item) => (
                   <div
                     key={item}
-                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3"
+                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 transition hover:border-blue-400/30 hover:bg-white/[0.07]"
                   >
                     <span className="text-sm text-slate-200">{item}</span>
                     <span className="text-xs text-slate-500">
@@ -189,12 +209,31 @@ export default async function Home({ searchParams }: HomeProps) {
           {professions.map((item) => (
             <div
               key={item}
-              className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-blue-400/40 hover:bg-white/[0.06]"
+              className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur transition hover:border-blue-400/40 hover:bg-white/[0.07]"
             >
               <p className="text-lg font-semibold">{item}</p>
               <p className="mt-3 text-sm leading-6 text-slate-400">
                 İlk fazda ilan, eğitim, yarışma, staj ve kamu alımı takibi
                 yapılacak öncelikli meslek grubu.
+              </p>
+            </div>
+          ))}
+        </section>
+
+        <section className="grid gap-5 border-t border-white/10 py-12 md:grid-cols-3">
+          {valueCards.map((item) => (
+            <div
+              key={item.title}
+              className="rounded-3xl border border-white/10 bg-slate-900/60 p-6"
+            >
+              <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500/15 text-blue-300">
+                ✓
+              </div>
+              <h2 className="text-xl font-semibold text-white">
+                {item.title}
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-slate-400">
+                {item.text}
               </p>
             </div>
           ))}
@@ -230,7 +269,7 @@ export default async function Home({ searchParams }: HomeProps) {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-blue-400/20 bg-blue-400/[0.06] p-6 shadow-2xl shadow-blue-950/40">
+          <div className="rounded-[2rem] border border-blue-400/20 bg-blue-400/[0.06] p-6 shadow-2xl shadow-blue-950/40 backdrop-blur">
             <div className="rounded-[1.5rem] border border-white/10 bg-slate-950/80 p-6">
               <p className="text-sm font-medium text-slate-400">
                 Erken erişim listesi
@@ -359,7 +398,7 @@ export default async function Home({ searchParams }: HomeProps) {
             </p>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur">
             <p className="text-sm font-medium text-blue-200">
               İlk kaynak kapsamı
             </p>
@@ -383,6 +422,12 @@ export default async function Home({ searchParams }: HomeProps) {
             <p>© 2026 KariyerAtlas. Tüm hakları saklıdır.</p>
 
             <div className="flex flex-wrap gap-4">
+              <a
+                href="mailto:info@kariyeratlas.com"
+                className="transition hover:text-white"
+              >
+                info@kariyeratlas.com
+              </a>
               <a
                 href="/gizlilik-politikasi"
                 className="transition hover:text-white"
