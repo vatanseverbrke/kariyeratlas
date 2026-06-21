@@ -12,6 +12,12 @@ type Signup = {
   created_at: string;
 };
 
+type AdminPageProps = {
+  searchParams?: Promise<{
+    status_update?: string;
+  }>;
+};
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("tr-TR", {
     dateStyle: "medium",
@@ -19,7 +25,50 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-export default async function AdminPage() {
+function getStatusLabel(status: string) {
+  if (status === "contacted") return "contacted";
+  if (status === "waiting") return "waiting";
+  if (status === "archived") return "archived";
+  return "new";
+}
+
+function getStatusClass(status: string) {
+  if (status === "contacted") {
+    return "bg-blue-500/15 text-blue-300";
+  }
+
+  if (status === "waiting") {
+    return "bg-amber-500/15 text-amber-300";
+  }
+
+  if (status === "archived") {
+    return "bg-slate-500/15 text-slate-300";
+  }
+
+  return "bg-emerald-500/15 text-emerald-300";
+}
+
+export default async function AdminPage({ searchParams }: AdminPageProps) {
+  const params = await searchParams;
+  const statusUpdate = params?.status_update;
+
+  const feedback =
+    statusUpdate === "success"
+      ? {
+          title: "Durum güncellendi.",
+          text: "Kayıt durumu başarıyla değiştirildi.",
+          className: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+        }
+      : statusUpdate === "error" ||
+          statusUpdate === "config_error" ||
+          statusUpdate === "invalid_status"
+        ? {
+            title: "Durum güncellenemedi.",
+            text: "Kısa bir süre sonra tekrar deneyebilirsin.",
+            className: "border-red-400/30 bg-red-400/10 text-red-200",
+          }
+        : null;
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -79,6 +128,15 @@ export default async function AdminPage() {
           </div>
         </div>
 
+        {feedback ? (
+          <div
+            className={`mt-8 rounded-3xl border p-5 text-sm ${feedback.className}`}
+          >
+            <p className="font-semibold">{feedback.title}</p>
+            <p className="mt-1 opacity-90">{feedback.text}</p>
+          </div>
+        ) : null}
+
         {error ? (
           <div className="mt-8 rounded-3xl border border-red-400/30 bg-red-400/10 p-6 text-red-200">
             <p className="font-semibold">Kayıtlar alınamadı.</p>
@@ -95,6 +153,7 @@ export default async function AdminPage() {
                   <th className="px-5 py-4 font-medium">Meslek / Alan</th>
                   <th className="px-5 py-4 font-medium">Şehir</th>
                   <th className="px-5 py-4 font-medium">Durum</th>
+                  <th className="px-5 py-4 font-medium">Durum Güncelle</th>
                   <th className="px-5 py-4 font-medium">Kaynak</th>
                   <th className="px-5 py-4 font-medium">Kayıt Tarihi</th>
                 </tr>
@@ -107,20 +166,55 @@ export default async function AdminPage() {
                       <td className="whitespace-nowrap px-5 py-4 text-white">
                         {signup.email}
                       </td>
+
                       <td className="whitespace-nowrap px-5 py-4 text-slate-300">
                         {signup.profession || "-"}
                       </td>
+
                       <td className="whitespace-nowrap px-5 py-4 text-slate-300">
                         {signup.city || "-"}
                       </td>
+
                       <td className="whitespace-nowrap px-5 py-4">
-                        <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs text-emerald-300">
-                          {signup.status}
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs ${getStatusClass(
+                            signup.status
+                          )}`}
+                        >
+                          {getStatusLabel(signup.status)}
                         </span>
                       </td>
+
+                      <td className="whitespace-nowrap px-5 py-4">
+                        <form
+                          action={`/admin/signups/${signup.id}/status`}
+                          method="post"
+                          className="flex items-center gap-2"
+                        >
+                          <select
+                            name="status"
+                            defaultValue={signup.status}
+                            className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white outline-none transition focus:border-blue-400"
+                          >
+                            <option value="new">new</option>
+                            <option value="contacted">contacted</option>
+                            <option value="waiting">waiting</option>
+                            <option value="archived">archived</option>
+                          </select>
+
+                          <button
+                            type="submit"
+                            className="rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/20"
+                          >
+                            Güncelle
+                          </button>
+                        </form>
+                      </td>
+
                       <td className="whitespace-nowrap px-5 py-4 text-slate-400">
                         {signup.source}
                       </td>
+
                       <td className="whitespace-nowrap px-5 py-4 text-slate-400">
                         {formatDate(signup.created_at)}
                       </td>
@@ -129,7 +223,7 @@ export default async function AdminPage() {
                 ) : (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-5 py-12 text-center text-slate-400"
                     >
                       Henüz erken erişim kaydı yok.
