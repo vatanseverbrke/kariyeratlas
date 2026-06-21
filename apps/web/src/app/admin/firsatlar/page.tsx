@@ -22,6 +22,7 @@ type PageProps = {
     opportunity_create?: string;
     opportunity_update?: string;
     opportunity_delete?: string;
+    opportunity_edit?: string;
   }>;
 };
 
@@ -107,6 +108,14 @@ function getFeedback(params: Awaited<PageProps["searchParams"]>) {
     };
   }
 
+  if (params?.opportunity_edit === "success") {
+    return {
+      title: "Fırsat düzenlendi.",
+      text: "Fırsat bilgileri başarıyla güncellendi.",
+      className: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+    };
+  }
+
   if (params?.opportunity_create === "missing_fields") {
     return {
       title: "Eksik bilgi var.",
@@ -118,7 +127,8 @@ function getFeedback(params: Awaited<PageProps["searchParams"]>) {
   if (
     params?.opportunity_create ||
     params?.opportunity_update ||
-    params?.opportunity_delete
+    params?.opportunity_delete ||
+    params?.opportunity_edit
   ) {
     return {
       title: "İşlem tamamlanamadı.",
@@ -179,7 +189,7 @@ export default async function AdminFirsatlarPage({ searchParams }: PageProps) {
             </h1>
 
             <p className="mt-3 text-slate-400">
-              Yeni fırsat ekle, mevcut fırsatları güncelle, arşivle veya sil.
+              Yeni fırsat ekle, mevcut fırsatları düzenle, güncelle, arşivle veya sil.
             </p>
           </div>
 
@@ -458,6 +468,171 @@ export default async function AdminFirsatlarPage({ searchParams }: PageProps) {
                         {opportunity.description}
                       </p>
                     ) : null}
+
+                    <details className="mt-5 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+                      <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.2em] text-blue-300">
+                        Fırsatı düzenle
+                      </summary>
+
+                      <form
+                        action={`/admin/opportunities/${opportunity.id}/edit`}
+                        method="post"
+                        className="mt-5 space-y-4"
+                      >
+                        <div>
+                          <label className="mb-2 block text-sm text-slate-300">
+                            Başlık
+                          </label>
+                          <input
+                            name="title"
+                            required
+                            defaultValue={opportunity.title}
+                            className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-2 block text-sm text-slate-300">
+                            Kurum / Firma
+                          </label>
+                          <input
+                            name="organization"
+                            required
+                            defaultValue={opportunity.organization}
+                            className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+                          />
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <label className="mb-2 block text-sm text-slate-300">
+                              Fırsat türü
+                            </label>
+                            <select
+                              name="opportunity_type"
+                              required
+                              defaultValue={opportunity.opportunity_type}
+                              className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+                            >
+                              {opportunityTypes.map((type) => (
+                                <option key={type} value={type}>
+                                  {type}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-sm text-slate-300">
+                              Meslek / Alan
+                            </label>
+                            <select
+                              name="profession_area"
+                              defaultValue={opportunity.profession_area || ""}
+                              className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+                            >
+                              <option value="">Seçiniz</option>
+                              {professionAreas.map((profession) => (
+                                <option key={profession} value={profession}>
+                                  {profession}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <label className="mb-2 block text-sm text-slate-300">
+                              Şehir
+                            </label>
+                            <select
+                              name="city"
+                              defaultValue={opportunity.city || ""}
+                              className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+                            >
+                              <option value="">Seçiniz</option>
+                              {cities.map((city) => (
+                                <option key={city} value={city}>
+                                  {city}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-sm text-slate-300">
+                              Son başvuru tarihi
+                            </label>
+                            <input
+                              name="deadline"
+                              type="date"
+                              defaultValue={opportunity.deadline || ""}
+                              className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-2 block text-sm text-slate-300">
+                            Kaynak linki
+                          </label>
+                          <input
+                            name="source_url"
+                            required
+                            type="url"
+                            defaultValue={opportunity.source_url}
+                            className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-2 block text-sm text-slate-300">
+                            Açıklama
+                          </label>
+                          <textarea
+                            name="description"
+                            rows={4}
+                            defaultValue={opportunity.description || ""}
+                            className="w-full resize-none rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+                          />
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <label className="mb-2 block text-sm text-slate-300">
+                              Durum
+                            </label>
+                            <select
+                              name="status"
+                              defaultValue={opportunity.status}
+                              className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+                            >
+                              <option value="active">active</option>
+                              <option value="draft">draft</option>
+                              <option value="archived">archived</option>
+                            </select>
+                          </div>
+
+                          <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-slate-300">
+                            <input
+                              type="checkbox"
+                              name="is_featured"
+                              defaultChecked={opportunity.is_featured}
+                              className="h-4 w-4 accent-blue-600"
+                            />
+                            Öne çıkan fırsat
+                          </label>
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="w-full rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
+                        >
+                          Düzenlemeyi kaydet
+                        </button>
+                      </form>
+                    </details>
 
                     <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
