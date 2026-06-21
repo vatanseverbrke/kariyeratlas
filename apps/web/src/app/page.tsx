@@ -111,7 +111,7 @@ export default async function Home({ searchParams }: HomeProps) {
           </div>
 
           <div className="hidden items-center gap-6 text-sm text-slate-300 md:flex">
-            <a href="#firsatlar" className="transition hover:text-white">
+            <a href="/firsatlar" className="transition hover:text-white">
               Fırsatlar
             </a>
             <a href="#meslekler" className="transition hover:text-white">
@@ -151,10 +151,10 @@ export default async function Home({ searchParams }: HomeProps) {
                 Erken erişim talep et
               </a>
               <a
-                href="#vizyon"
+                href="/firsatlar"
                 className="rounded-full border border-white/15 px-7 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10"
               >
-                Vizyonu incele
+                Fırsatları incele
               </a>
             </div>
 
@@ -198,6 +198,13 @@ export default async function Home({ searchParams }: HomeProps) {
                   </div>
                 ))}
               </div>
+
+              <a
+                href="/firsatlar"
+                className="mt-6 block rounded-2xl bg-white px-5 py-3 text-center text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+              >
+                Fırsat sayfasına git
+              </a>
             </div>
           </div>
         </div>
