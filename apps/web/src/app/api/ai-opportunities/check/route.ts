@@ -114,6 +114,9 @@ const ignoredExactTitles = [
   "tümü",
   "listele",
   "okunabilir hale getir",
+  "+",
+  "" + "",
+  "" + " " + "",
 ];
 
 function unauthorized() {
@@ -176,6 +179,10 @@ function isIgnoredTitle(title: string) {
 
   if (cleanTitle.length < 10) return true;
   if (cleanTitle.length > 240) return true;
+
+  const letterCount = (cleanTitle.match(/[A-Za-zÇĞİÖŞÜçğıöşü]/g) || []).length;
+
+  if (letterCount < 6) return true;
 
   if (ignoredExactTitles.includes(lowered)) return true;
 
