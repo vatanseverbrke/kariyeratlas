@@ -37,8 +37,6 @@ const keywordRules = [
   "akademik",
   "öğretim görevlisi",
   "araştırma görevlisi",
-  "staj",
-  "stajyer",
   "kariyer",
   "iş başvurusu",
   "yarışma",
@@ -51,19 +49,6 @@ const keywordRules = [
   "2204",
   "2209",
   "proje çağrısı",
-  "burs",
-  "eğitim",
-  "kurs",
-  "sertifika",
-  "katılım belgesi",
-  "meb sertifikası",
-  "online eğitim",
-  "uzaktan eğitim",
-  "ücretsiz eğitim",
-  "kontenjan",
-  "program",
-  "programı",
-  "programları",
   "çağrı",
   "çağrısı",
 ];
@@ -104,13 +89,11 @@ const ignoredExactTitles = [
   "etkinlikler",
   "etkinlik",
   "eğitimler",
-  "eğitim",
   "yarışmalar",
   "yarışma",
   "başvurular",
   "başvuru",
   "kurslar",
-  "kurs",
   "tümü",
   "listele",
   "okunabilir hale getir",
@@ -243,10 +226,8 @@ function isIgnoredTitle(title: string) {
     "ilanlar",
     "haber",
     "haberler",
-    "eğitim",
-    "eğitimler",
-    "kurs",
-    "kurslar",
+      "eğitimler",
+      "kurslar",
     "yarışma",
     "yarışmalar",
   ];
@@ -345,9 +326,7 @@ function extractLinksFromHtml(html: string, baseUrl: string, sourceName: string)
       "sözleşmeli",
       "sürekli işçi",
       "memur",
-      "staj",
-      "stajyer",
-      "yarışma",
+              "yarışma",
       "proje yarışması",
       "fikir yarışması",
       "tübitak",
@@ -356,14 +335,7 @@ function extractLinksFromHtml(html: string, baseUrl: string, sourceName: string)
       "2204",
       "2209",
       "proje çağrısı",
-      "burs",
-      "sertifika",
-      "katılım belgesi",
-      "kurs",
-      "ücretsiz eğitim",
-      "online eğitim",
-      "uzaktan eğitim",
-      "son başvuru",
+                                  "son başvuru",
       "başvuru",
     ]);
 
@@ -375,29 +347,26 @@ function extractLinksFromHtml(html: string, baseUrl: string, sourceName: string)
       wordCount >= 3 &&
       (hasAnyKeyword(candidateText, [
         "yarışma",
-        "proje",
-        "başvuru",
+        "proje yarışması",
+        "proje çağrısı",
         "çağrı",
         "ödül",
+        "teknofest",
+        "tübitak",
+        "tubitak",
         "2204",
         "2209",
       ]) ||
         url.toLocaleLowerCase("tr-TR").includes("yarism") ||
         url.toLocaleLowerCase("tr-TR").includes("yarisma") ||
-        url.toLocaleLowerCase("tr-TR").includes("duyuru") ||
         url.toLocaleLowerCase("tr-TR").includes("proje"));
 
     const trustedEducationSignal =
       isTrustedEducationSource(sourceName) &&
       wordCount >= 2 &&
       (hasAnyKeyword(candidateText, [
-        "eğitim",
-        "egitim",
-        "kurs",
-        "sertifika",
-        "katılım belgesi",
-        "program",
-        "başvuru",
+              "egitim",
+                                "başvuru",
       ]) ||
         url.toLocaleLowerCase("tr-TR").includes("egitim") ||
         url.toLocaleLowerCase("tr-TR").includes("kurs") ||
@@ -870,7 +839,7 @@ export async function GET(request: Request) {
             }),
             source_url: link.url,
             deadline,
-            ai_summary: "Ücretsiz anahtar kelime taramasıyla yakalandı.",
+            ai_summary: "Ücretsiz iş ilanı / yarışma odaklı taramayla yakalandı.",
             ai_reason: `Eşleşen kelimeler: ${link.matchedKeywords.join(", ")}`,
             ai_confidence: confidence,
             raw_text: contextText.slice(0, 5000),
