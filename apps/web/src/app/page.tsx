@@ -1,30 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
+import { opportunityTypes, professionAreas } from "@/lib/options";
+
+const homepageOpportunityTypes = opportunityTypes.slice(0, 8);
+const homepageProfessionAreas = professionAreas.slice(0, 7);
 
 const stats = [
-  { label: "Fırsat türü", value: "12+" },
-  { label: "Öncelikli meslek", value: "7" },
+  { label: "Fırsat türü", value: String(opportunityTypes.length) },
+  { label: "Meslek alanı", value: String(professionAreas.length) },
   { label: "İlk kaynak hedefi", value: "25+" },
-];
-
-const opportunityTypes = [
-  "Kamu alımları",
-  "Belediye ilanları",
-  "Özel sektör",
-  "Stajlar",
-  "Eğitimler",
-  "Yarışmalar",
-  "Burslar",
-  "Meslek odaları",
-];
-
-const professions = [
-  "Şehir ve Bölge Planlama",
-  "Peyzaj Mimarlığı",
-  "Mimarlık",
-  "CBS / GIS",
-  "Harita Mühendisliği",
-  "İnşaat Mühendisliği",
-  "Çevre Mühendisliği",
 ];
 
 const focusAreas = [
@@ -257,7 +240,7 @@ export default async function Home({ searchParams }: HomeProps) {
               </div>
 
               <div className="space-y-3" id="firsatlar">
-                {opportunityTypes.map((item) => (
+                {homepageOpportunityTypes.map((item) => (
                   <div
                     key={item}
                     className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 transition hover:border-blue-400/30 hover:bg-white/[0.07]"
@@ -361,7 +344,7 @@ export default async function Home({ searchParams }: HomeProps) {
           id="meslekler"
           className="grid gap-5 border-t border-white/10 py-12 md:grid-cols-2 lg:grid-cols-3"
         >
-          {professions.map((item) => (
+          {homepageProfessionAreas.map((item) => (
             <div
               key={item}
               className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur transition hover:border-blue-400/40 hover:bg-white/[0.07]"
@@ -481,7 +464,7 @@ export default async function Home({ searchParams }: HomeProps) {
                       <option value="" className="bg-slate-950">
                         Seçiniz
                       </option>
-                      {professions.map((profession) => (
+                      {professionAreas.map((profession) => (
                         <option
                           key={profession}
                           value={profession}
@@ -490,9 +473,6 @@ export default async function Home({ searchParams }: HomeProps) {
                           {profession}
                         </option>
                       ))}
-                      <option value="Diğer" className="bg-slate-950">
-                        Diğer
-                      </option>
                     </select>
                   </div>
 
