@@ -180,6 +180,44 @@ function isIgnoredTitle(title: string) {
   if (cleanTitle.length < 10) return true;
   if (cleanTitle.length > 240) return true;
 
+  const malformedTemplateSignals = [
+    "item.",
+    "programadi",
+    "programadı",
+    "egitimadi",
+    "eğitimadi",
+    "kursadi",
+    "kursadı",
+    "kategoriadi",
+    "kategoriadı",
+    "duyuruadi",
+    "duyuruadı",
+    "haberadi",
+    "haberadı",
+    "{{",
+    "}}",
+    "${",
+    "function",
+    "javascript",
+    "undefined",
+    "null",
+  ];
+
+  if (malformedTemplateSignals.some((signal) => lowered.includes(signal))) {
+    return true;
+  }
+
+  if (
+    cleanTitle.includes('" +') ||
+    cleanTitle.includes("+ \"") ||
+    cleanTitle.includes("' +") ||
+    cleanTitle.includes("+ '") ||
+    cleanTitle.includes("` +") ||
+    cleanTitle.includes("+ `")
+  ) {
+    return true;
+  }
+
   const letterCount = (cleanTitle.match(/[A-Za-zÇĞİÖŞÜçğıöşü]/g) || []).length;
 
   if (letterCount < 6) return true;
