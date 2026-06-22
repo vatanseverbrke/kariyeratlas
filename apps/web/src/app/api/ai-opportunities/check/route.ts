@@ -61,6 +61,11 @@ const keywordRules = [
   "uzaktan eğitim",
   "ücretsiz eğitim",
   "kontenjan",
+  "program",
+  "programı",
+  "programları",
+  "çağrı",
+  "çağrısı",
 ];
 
 const ignoredTitlePatterns = [
@@ -216,6 +221,38 @@ function findMatchedKeywords(text: string) {
   );
 }
 
+function isTrustedCompetitionSource(sourceName: string) {
+  const lowered = sourceName.toLocaleLowerCase("tr-TR");
+
+  return (
+    lowered.includes("tübitak") ||
+    lowered.includes("tubitak") ||
+    lowered.includes("teknofest") ||
+    lowered.includes("yarışma")
+  );
+}
+
+function isTrustedEducationSource(sourceName: string) {
+  const lowered = sourceName.toLocaleLowerCase("tr-TR");
+
+  return (
+    lowered.includes("btk akademi") ||
+    lowered.includes("ismek") ||
+    lowered.includes("e-yaygın") ||
+    lowered.includes("yaygın") ||
+    lowered.includes("uzaktan eğitim") ||
+    lowered.includes("eğitim")
+  );
+}
+
+function hasAnyKeyword(text: string, keywords: string[]) {
+  const lowered = text.toLocaleLowerCase("tr-TR");
+
+  return keywords.some((keyword) =>
+    lowered.includes(keyword.toLocaleLowerCase("tr-TR"))
+  );
+}
+
 function normalizeUrl(value: string, fallbackUrl: string) {
   if (!value) return fallbackUrl;
 
@@ -235,7 +272,7 @@ function normalizeUrl(value: string, fallbackUrl: string) {
   }
 }
 
-function extractLinksFromHtml(html: string, baseUrl: string) {
+function extractLinksFromHtml(html: string, baseUrl: string, sourceName: string) {
   const links: ExtractedLink[] = [];
   const seenUrls = new Set<string>();
 
@@ -254,8 +291,10 @@ function extractLinksFromHtml(html: string, baseUrl: string) {
     if (!url || seenUrls.has(url)) continue;
     if (isIgnoredTitle(title)) continue;
 
-    const matchedKeywords = findMatchedKeywords(`${title} ${url}`);
-    const strongSignal = [
+    const candidateText = `${title} ${url}`;
+    const matchedKeywords = findMatchedKeywords(candidateText);
+
+    const strongSignal = hasAnyKeyword(candidateText, [
       "personel",
       "personel alımı",
       "sözleşmeli",
@@ -267,22 +306,65 @@ function extractLinksFromHtml(html: string, baseUrl: string) {
       "proje yarışması",
       "fikir yarışması",
       "tübitak",
+      "tubitak",
       "teknofest",
       "2204",
       "2209",
+      "proje çağrısı",
       "burs",
       "sertifika",
       "katılım belgesi",
       "kurs",
       "ücretsiz eğitim",
+      "online eğitim",
+      "uzaktan eğitim",
       "son başvuru",
       "başvuru",
-    ].some((keyword) =>
-      `${title} ${url}`.toLocaleLowerCase("tr-TR").includes(keyword)
-    );
+    ]);
 
-    if (matchedKeywords.length === 0) continue;
-    if (!strongSignal && !/\d{1,2}[./-]\d{1,2}[./-]20\d{2}/.test(title)) continue;
+    const dateSignal = /\d{1,2}[./-]\d{1,2}[./-]20\d{2}/.test(title);
+    const wordCount = title.split(" ").filter(Boolean).length;
+
+    const trustedCompetitionSignal =
+      isTrustedCompetitionSource(sourceName) &&
+      wordCount >= 3 &&
+      (hasAnyKeyword(candidateText, [
+        "yarışma",
+        "proje",
+        "başvuru",
+        "çağrı",
+        "ödül",
+        "2204",
+        "2209",
+      ]) ||
+        url.toLocaleLowerCase("tr-TR").includes("yarism") ||
+        url.toLocaleLowerCase("tr-TR").includes("yarisma") ||
+        url.toLocaleLowerCase("tr-TR").includes("duyuru") ||
+        url.toLocaleLowerCase("tr-TR").includes("proje"));
+
+    const trustedEducationSignal =
+      isTrustedEducationSource(sourceName) &&
+      wordCount >= 2 &&
+      (hasAnyKeyword(candidateText, [
+        "eğitim",
+        "egitim",
+        "kurs",
+        "sertifika",
+        "katılım belgesi",
+        "program",
+        "başvuru",
+      ]) ||
+        url.toLocaleLowerCase("tr-TR").includes("egitim") ||
+        url.toLocaleLowerCase("tr-TR").includes("kurs") ||
+        url.toLocaleLowerCase("tr-TR").includes("program"));
+
+    if (matchedKeywords.length === 0 && !trustedCompetitionSignal && !trustedEducationSignal) {
+      continue;
+    }
+
+    if (!strongSignal && !dateSignal && !trustedCompetitionSignal && !trustedEducationSignal) {
+      continue;
+    }
 
     seenUrls.add(url);
 
@@ -690,7 +772,11 @@ export async function GET(request: Request) {
         })
         .eq("id", source.id);
 
-      const extractedLinks = extractLinksFromHtml(page.html, source.source_url);
+      const extractedLinks = extractLinksFromHtml(
+        page.html,
+        source.source_url,
+        source.name
+      );
       candidatesFoundCount += extractedLinks.length;
 
       let insertedForSource = 0;
