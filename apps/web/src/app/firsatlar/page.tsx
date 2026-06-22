@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { cities, opportunityTypes, professionAreas } from "@/lib/options";
 
 export const dynamic = "force-dynamic";
 
@@ -25,51 +26,6 @@ type OpportunitiesPageProps = {
     q?: string;
   }>;
 };
-
-const opportunityTypes = [
-  "Kamu alımı",
-  "Belediye ilanı",
-  "Özel sektör",
-  "Staj",
-  "Eğitim",
-  "Yarışma",
-  "Burs",
-  "Meslek odası",
-];
-
-const professionAreas = [
-  "Şehir ve Bölge Planlama",
-  "Peyzaj Mimarlığı",
-  "Mimarlık",
-  "CBS / GIS",
-  "Harita Mühendisliği",
-  "İnşaat Mühendisliği",
-  "Çevre Mühendisliği",
-  "İç Mimarlık",
-  "Endüstri Ürünleri Tasarımı",
-  "Coğrafya",
-  "Kamu Yönetimi",
-  "Sosyoloji",
-  "Ekonomi",
-  "İstatistik",
-  "Veri Analizi",
-  "Yazılım / Bilişim",
-  "Diğer",
-];
-
-const cities = [
-  "İstanbul",
-  "Ankara",
-  "İzmir",
-  "Kırklareli",
-  "Edirne",
-  "Tekirdağ",
-  "Kocaeli",
-  "Bursa",
-  "Antalya",
-  "Uzaktan",
-  "Diğer",
-];
 
 function formatDate(value: string | null) {
   if (!value) return "Belirtilmedi";

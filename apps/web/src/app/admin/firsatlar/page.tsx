@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { cities, opportunityTypes, professionAreas } from "@/lib/options";
 
 export const dynamic = "force-dynamic";
 
@@ -26,41 +27,6 @@ type PageProps = {
   }>;
 };
 
-const opportunityTypes = [
-  "Kamu alımı",
-  "Belediye ilanı",
-  "Özel sektör",
-  "Staj",
-  "Eğitim",
-  "Yarışma",
-  "Burs",
-  "Meslek odası",
-];
-
-const professionAreas = [
-  "Şehir ve Bölge Planlama",
-  "Peyzaj Mimarlığı",
-  "Mimarlık",
-  "CBS / GIS",
-  "Harita Mühendisliği",
-  "İnşaat Mühendisliği",
-  "Çevre Mühendisliği",
-  "Diğer",
-];
-
-const cities = [
-  "İstanbul",
-  "Ankara",
-  "İzmir",
-  "Kırklareli",
-  "Edirne",
-  "Tekirdağ",
-  "Kocaeli",
-  "Bursa",
-  "Antalya",
-  "Diğer",
-];
-
 function formatDate(value: string | null) {
   if (!value) return "-";
 
@@ -74,13 +40,6 @@ function formatDateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
-}
-
-function isExpired(deadline: string | null) {
-  if (!deadline) return false;
-
-  const today = new Date().toISOString().slice(0, 10);
-  return deadline < today;
 }
 
 function statusClass(status: string) {
@@ -196,7 +155,8 @@ export default async function AdminFirsatlarPage({ searchParams }: PageProps) {
             </h1>
 
             <p className="mt-3 text-slate-400">
-              Yeni fırsat ekle, mevcut fırsatları düzenle, güncelle, arşivle veya sil.
+              Yeni fırsat ekle, mevcut fırsatları düzenle, güncelle, arşivle
+              veya sil.
             </p>
           </div>
 
@@ -429,12 +389,6 @@ export default async function AdminFirsatlarPage({ searchParams }: PageProps) {
                           {opportunity.is_featured ? (
                             <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs text-emerald-300">
                               Öne çıkan
-                            </span>
-                          ) : null}
-
-                          {isExpired(opportunity.deadline) ? (
-                            <span className="rounded-full bg-red-500/15 px-3 py-1 text-xs text-red-300">
-                              Süresi geçti
                             </span>
                           ) : null}
                         </div>
