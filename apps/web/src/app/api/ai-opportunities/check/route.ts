@@ -121,14 +121,25 @@ function unauthorized() {
   );
 }
 
-function normalizeText(value: string) {
+function decodeHtmlEntities(value: string) {
   return value
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
+      String.fromCharCode(Number.parseInt(hex, 16))
+    )
+    .replace(/&#(\d+);/g, (_, decimal) =>
+      String.fromCharCode(Number.parseInt(decimal, 10))
+    )
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
     .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
+    .replace(/&gt;/g, ">");
+}
+
+function normalizeText(value: string) {
+  return decodeHtmlEntities(value)
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -166,6 +177,31 @@ function isIgnoredTitle(title: string) {
   const wordCount = cleanTitle.split(" ").filter(Boolean).length;
 
   if (wordCount < 2 && !/\d{4}|\d{1,2}[./-]\d{1,2}/.test(cleanTitle)) {
+    return true;
+  }
+
+  const words = lowered.split(" ").filter(Boolean);
+
+  if (words.length <= 3 && new Set(words).size === 1) {
+    return true;
+  }
+
+  const genericWords = [
+    "duyuru",
+    "duyurular",
+    "ilan",
+    "ilanlar",
+    "haber",
+    "haberler",
+    "eğitim",
+    "eğitimler",
+    "kurs",
+    "kurslar",
+    "yarışma",
+    "yarışmalar",
+  ];
+
+  if (words.length <= 3 && words.every((word) => genericWords.includes(word))) {
     return true;
   }
 
