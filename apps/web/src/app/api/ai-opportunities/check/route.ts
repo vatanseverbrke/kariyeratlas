@@ -737,7 +737,8 @@ export async function GET(request: Request) {
     .from("opportunity_sources")
     .select("id,name,source_url,profession_area,city")
     .eq("is_active", true)
-    .order("last_checked_at", { ascending: true })
+    .order("last_checked_at", { ascending: true, nullsFirst: true })
+    .order("created_at", { ascending: false })
     .limit(sourceLimit);
 
   if (sourcesError) {
