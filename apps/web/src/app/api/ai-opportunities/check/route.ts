@@ -19,41 +19,56 @@ type ExtractedLink = {
   matchedKeywords: string[];
 };
 
-const keywordRules = [
-  "ilan",
-  "duyuru",
-  "personel",
+const jobKeywords = [
   "personel alımı",
-  "alım",
-  "alımı",
-  "başvuru",
-  "son başvuru",
-  "işçi",
-  "memur",
-  "sözleşmeli",
+  "personel alim",
+  "personel alım",
+  "personel alınacaktır",
+  "personel alinacaktir",
+  "sözleşmeli personel",
+  "sozlesmeli personel",
   "sürekli işçi",
-  "uzman",
-  "uzman yardımcısı",
-  "akademik",
+  "surekli isci",
+  "işçi alımı",
+  "isci alimi",
+  "memur alımı",
+  "memur alimi",
+  "eleman alımı",
+  "eleman alimi",
+  "iş ilanı",
+  "is ilani",
+  "iş ilanları",
+  "is ilanlari",
+  "istihdam edilecektir",
+  "istihdam edilmek üzere",
+  "akademik personel",
   "öğretim görevlisi",
+  "ogretim gorevlisi",
   "araştırma görevlisi",
-  "kariyer",
-  "iş başvurusu",
-  "yarışma",
-  "proje yarışması",
-  "fikir yarışması",
-  "ödül",
-  "finalist",
-  "tübitak",
-  "teknofest",
-  "2204",
-  "2209",
-  "proje çağrısı",
-  "çağrı",
-  "çağrısı",
+  "arastirma gorevlisi",
+  "uzman yardımcısı",
+  "uzman yardimcisi",
 ];
 
-const ignoredTitlePatterns = [
+const competitionKeywords = [
+  "yarışma",
+  "yarisma",
+  "proje yarışması",
+  "proje yarismasi",
+  "fikir yarışması",
+  "fikir yarismasi",
+  "proje çağrısı",
+  "proje cagrisi",
+  "ödüllü yarışma",
+  "odullu yarisma",
+  "teknofest",
+  "tübitak",
+  "tubitak",
+  "2204",
+  "2209",
+];
+
+const noiseTitlePatterns = [
   "ana sayfa",
   "anasayfa",
   "home",
@@ -77,6 +92,32 @@ const ignoredTitlePatterns = [
   "detay",
   "detaylar",
   "daha fazla",
+  "başvuru takip",
+  "online başvuru",
+  "e-belediye",
+  "e belediye",
+  "talep takip",
+  "çözüm merkezi",
+  "beyaz masa",
+  "hizmetler",
+  "abonelik",
+  "borç ödeme",
+  "ödeme",
+  "mezarlık",
+  "nikah",
+  "şikayet",
+  "istek",
+  "mezbaha başvuru",
+  "proje müellif başvuru",
+  "ustam başvuru",
+  "çamaşırhane başvuru",
+  "istihdam akademileri başvuru",
+  "ko-mek başvuru",
+  "kurs başvuru",
+  "eğitim başvuru",
+  "spor başvuru",
+  "sosyal yardım",
+  "yardım başvuru",
 ];
 
 const ignoredExactTitles = [
@@ -89,17 +130,21 @@ const ignoredExactTitles = [
   "etkinlikler",
   "etkinlik",
   "eğitimler",
+  "eğitim",
   "yarışmalar",
   "yarışma",
   "başvurular",
   "başvuru",
-  "kurslar",
+  "başvuru takip",
+  "online başvuru",
+  "hizmetler",
+  "kariyer",
   "tümü",
   "listele",
   "okunabilir hale getir",
   "+",
-  "" + "",
-  "" + " " + "",
+  "\" + \"",
+  "\" + \" \" + \"",
 ];
 
 function unauthorized() {
@@ -152,6 +197,36 @@ function stripHtml(value: string) {
     .trim();
 }
 
+function hasAnyKeyword(text: string, keywords: string[]) {
+  const lowered = text.toLocaleLowerCase("tr-TR");
+
+  return keywords.some((keyword) =>
+    lowered.includes(keyword.toLocaleLowerCase("tr-TR"))
+  );
+}
+
+function getMatchedKeywords(text: string) {
+  return [...jobKeywords, ...competitionKeywords].filter((keyword) =>
+    text.toLocaleLowerCase("tr-TR").includes(keyword.toLocaleLowerCase("tr-TR"))
+  );
+}
+
+function isCompetitionSource(sourceName: string) {
+  const lowered = sourceName.toLocaleLowerCase("tr-TR");
+
+  return (
+    lowered.includes("tübitak") ||
+    lowered.includes("tubitak") ||
+    lowered.includes("teknofest") ||
+    lowered.includes("yarışma") ||
+    lowered.includes("yarisma")
+  );
+}
+
+function isMunicipalitySource(sourceName: string) {
+  return sourceName.toLocaleLowerCase("tr-TR").includes("belediye");
+}
+
 function isIgnoredTitle(title: string) {
   const cleanTitle = title
     .replace(/[\s\n\r\t]+/g, " ")
@@ -160,7 +235,7 @@ function isIgnoredTitle(title: string) {
 
   const lowered = cleanTitle.toLocaleLowerCase("tr-TR");
 
-  if (cleanTitle.length < 10) return true;
+  if (cleanTitle.length < 12) return true;
   if (cleanTitle.length > 240) return true;
 
   const malformedTemplateSignals = [
@@ -192,7 +267,7 @@ function isIgnoredTitle(title: string) {
 
   if (
     cleanTitle.includes('" +') ||
-    cleanTitle.includes("+ \"") ||
+    cleanTitle.includes('+ "') ||
     cleanTitle.includes("' +") ||
     cleanTitle.includes("+ '") ||
     cleanTitle.includes("` +") ||
@@ -203,84 +278,23 @@ function isIgnoredTitle(title: string) {
 
   const letterCount = (cleanTitle.match(/[A-Za-zÇĞİÖŞÜçğıöşü]/g) || []).length;
 
-  if (letterCount < 6) return true;
-
+  if (letterCount < 8) return true;
   if (ignoredExactTitles.includes(lowered)) return true;
-
-  const wordCount = cleanTitle.split(" ").filter(Boolean).length;
-
-  if (wordCount < 2 && !/\d{4}|\d{1,2}[./-]\d{1,2}/.test(cleanTitle)) {
-    return true;
-  }
 
   const words = lowered.split(" ").filter(Boolean);
 
-  if (words.length <= 3 && new Set(words).size === 1) {
+  if (words.length < 2) return true;
+  if (words.length <= 3 && new Set(words).size === 1) return true;
+
+  if (noiseTitlePatterns.some((pattern) => lowered.includes(pattern))) {
     return true;
   }
 
-  const genericWords = [
-    "duyuru",
-    "duyurular",
-    "ilan",
-    "ilanlar",
-    "haber",
-    "haberler",
-      "eğitimler",
-      "kurslar",
-    "yarışma",
-    "yarışmalar",
-  ];
-
-  if (words.length <= 3 && words.every((word) => genericWords.includes(word))) {
-    return true;
-  }
-
-  return ignoredTitlePatterns.some((pattern) => lowered.includes(pattern));
-}
-
-function findMatchedKeywords(text: string) {
-  const lowered = text.toLocaleLowerCase("tr-TR");
-
-  return keywordRules.filter((keyword) =>
-    lowered.includes(keyword.toLocaleLowerCase("tr-TR"))
-  );
-}
-
-function isTrustedCompetitionSource(sourceName: string) {
-  const lowered = sourceName.toLocaleLowerCase("tr-TR");
-
-  return (
-    lowered.includes("tübitak") ||
-    lowered.includes("tubitak") ||
-    lowered.includes("teknofest") ||
-    lowered.includes("yarışma")
-  );
-}
-
-function isTrustedEducationSource(sourceName: string) {
-  const lowered = sourceName.toLocaleLowerCase("tr-TR");
-
-  return (
-    lowered.includes("btk akademi") ||
-    lowered.includes("ismek") ||
-    lowered.includes("e-yaygın") ||
-    lowered.includes("yaygın") ||
-    lowered.includes("uzaktan eğitim") ||
-    lowered.includes("eğitim")
-  );
-}
-
-function hasAnyKeyword(text: string, keywords: string[]) {
-  const lowered = text.toLocaleLowerCase("tr-TR");
-
-  return keywords.some((keyword) =>
-    lowered.includes(keyword.toLocaleLowerCase("tr-TR"))
-  );
+  return false;
 }
 
 function normalizeUrl(value: string, fallbackUrl: string) {
-  if (!value) return fallbackUrl;
+  if (!value) return "";
 
   if (
     value.startsWith("#") ||
@@ -296,6 +310,44 @@ function normalizeUrl(value: string, fallbackUrl: string) {
   } catch {
     return "";
   }
+}
+
+function isValidOpportunityCandidate(params: {
+  title: string;
+  url: string;
+  sourceName: string;
+}) {
+  const candidateText = `${params.title} ${params.url}`;
+  const titleLowered = params.title.toLocaleLowerCase("tr-TR");
+
+  const jobSignal = hasAnyKeyword(candidateText, jobKeywords);
+  const competitionSignal =
+    isCompetitionSource(params.sourceName) &&
+    hasAnyKeyword(candidateText, competitionKeywords);
+
+  if (isMunicipalitySource(params.sourceName)) {
+    const municipalityJobSignal = hasAnyKeyword(candidateText, [
+      "personel alımı",
+      "personel alim",
+      "personel alım",
+      "personel alınacaktır",
+      "sözleşmeli personel",
+      "sürekli işçi",
+      "işçi alımı",
+      "memur alımı",
+      "eleman alımı",
+      "istihdam edilecektir",
+      "istihdam edilmek üzere",
+    ]);
+
+    return municipalityJobSignal;
+  }
+
+  if (titleLowered.includes("başvuru") && !jobSignal && !competitionSignal) {
+    return false;
+  }
+
+  return jobSignal || competitionSignal;
 }
 
 function extractLinksFromHtml(html: string, baseUrl: string, sourceName: string) {
@@ -317,68 +369,11 @@ function extractLinksFromHtml(html: string, baseUrl: string, sourceName: string)
     if (!url || seenUrls.has(url)) continue;
     if (isIgnoredTitle(title)) continue;
 
-    const candidateText = `${title} ${url}`;
-    const matchedKeywords = findMatchedKeywords(candidateText);
+    if (!isValidOpportunityCandidate({ title, url, sourceName })) continue;
 
-    const strongSignal = hasAnyKeyword(candidateText, [
-      "personel",
-      "personel alımı",
-      "sözleşmeli",
-      "sürekli işçi",
-      "memur",
-              "yarışma",
-      "proje yarışması",
-      "fikir yarışması",
-      "tübitak",
-      "tubitak",
-      "teknofest",
-      "2204",
-      "2209",
-      "proje çağrısı",
-                                  "son başvuru",
-      "başvuru",
-    ]);
+    const matchedKeywords = getMatchedKeywords(`${title} ${url}`);
 
-    const dateSignal = /\d{1,2}[./-]\d{1,2}[./-]20\d{2}/.test(title);
-    const wordCount = title.split(" ").filter(Boolean).length;
-
-    const trustedCompetitionSignal =
-      isTrustedCompetitionSource(sourceName) &&
-      wordCount >= 3 &&
-      (hasAnyKeyword(candidateText, [
-        "yarışma",
-        "proje yarışması",
-        "proje çağrısı",
-        "çağrı",
-        "ödül",
-        "teknofest",
-        "tübitak",
-        "tubitak",
-        "2204",
-        "2209",
-      ]) ||
-        url.toLocaleLowerCase("tr-TR").includes("yarism") ||
-        url.toLocaleLowerCase("tr-TR").includes("yarisma") ||
-        url.toLocaleLowerCase("tr-TR").includes("proje"));
-
-    const trustedEducationSignal =
-      isTrustedEducationSource(sourceName) &&
-      wordCount >= 2 &&
-      (hasAnyKeyword(candidateText, [
-              "egitim",
-                                "başvuru",
-      ]) ||
-        url.toLocaleLowerCase("tr-TR").includes("egitim") ||
-        url.toLocaleLowerCase("tr-TR").includes("kurs") ||
-        url.toLocaleLowerCase("tr-TR").includes("program"));
-
-    if (matchedKeywords.length === 0 && !trustedCompetitionSignal && !trustedEducationSignal) {
-      continue;
-    }
-
-    if (!strongSignal && !dateSignal && !trustedCompetitionSignal && !trustedEducationSignal) {
-      continue;
-    }
+    if (matchedKeywords.length === 0) continue;
 
     seenUrls.add(url);
 
@@ -388,7 +383,7 @@ function extractLinksFromHtml(html: string, baseUrl: string, sourceName: string)
       matchedKeywords,
     });
 
-    if (links.length >= 12) break;
+    if (links.length >= 8) break;
   }
 
   return links;
@@ -399,60 +394,46 @@ function inferOpportunityType(text: string, sourceName: string) {
 
   if (
     lowered.includes("yarışma") ||
+    lowered.includes("yarisma") ||
     lowered.includes("teknofest") ||
     lowered.includes("tübitak") ||
+    lowered.includes("tubitak") ||
     lowered.includes("2204") ||
     lowered.includes("2209") ||
-    lowered.includes("ödül") ||
-    lowered.includes("proje çağrısı")
+    lowered.includes("proje çağrısı") ||
+    lowered.includes("proje cagrisi")
   ) {
     return "Yarışma";
   }
 
   if (
-    lowered.includes("eğitim") ||
-    lowered.includes("kurs") ||
-    lowered.includes("sertifika") ||
-    lowered.includes("katılım belgesi") ||
-    lowered.includes("uzaktan eğitim") ||
-    lowered.includes("online eğitim")
-  ) {
-    return "Eğitim";
-  }
-
-  if (lowered.includes("staj") || lowered.includes("stajyer")) {
-    return "Staj";
-  }
-
-  if (lowered.includes("burs")) {
-    return "Burs";
-  }
-
-  if (
     lowered.includes("akademik") ||
     lowered.includes("öğretim görevlisi") ||
-    lowered.includes("araştırma görevlisi")
+    lowered.includes("ogretim gorevlisi") ||
+    lowered.includes("araştırma görevlisi") ||
+    lowered.includes("arastirma gorevlisi")
   ) {
     return "Akademik ilan";
   }
 
-  if (lowered.includes("sözleşmeli")) {
+  if (lowered.includes("sözleşmeli") || lowered.includes("sozlesmeli")) {
     return "Sözleşmeli personel";
   }
 
-  if (lowered.includes("işçi")) {
+  if (
+    lowered.includes("sürekli işçi") ||
+    lowered.includes("surekli isci") ||
+    lowered.includes("işçi alımı") ||
+    lowered.includes("isci alimi")
+  ) {
     return "Sürekli işçi alımı";
-  }
-
-  if (lowered.includes("belediye")) {
-    return "Belediye ilanı";
   }
 
   if (
     lowered.includes("personel") ||
     lowered.includes("memur") ||
-    lowered.includes("alım") ||
-    lowered.includes("alımı")
+    lowered.includes("eleman alımı") ||
+    lowered.includes("eleman alimi")
   ) {
     return "Kamu alımı";
   }
@@ -585,13 +566,13 @@ function buildDescription(params: {
   sourceName: string;
   opportunityType: string;
 }) {
-  return `${params.title} başlıklı kayıt, ${params.sourceName} kaynağında anahtar kelime taramasıyla aday fırsat olarak yakalanmıştır. Fırsat türü otomatik olarak "${params.opportunityType}" şeklinde sınıflandırılmıştır. Yayına almadan önce kaynak bağlantısı üzerinden detaylar kontrol edilmelidir.`;
+  return `${params.title} başlıklı kayıt, ${params.sourceName} kaynağında iş ilanı / kamu alımı / yarışma odaklı taramayla aday fırsat olarak yakalanmıştır. Fırsat türü otomatik olarak "${params.opportunityType}" şeklinde sınıflandırılmıştır. Yayına almadan önce kaynak bağlantısı üzerinden detaylar kontrol edilmelidir.`;
 }
 
 function buildConfidence(keywordCount: number) {
-  const value = 0.45 + Math.min(keywordCount, 5) * 0.07;
+  const value = 0.55 + Math.min(keywordCount, 5) * 0.08;
 
-  return Number(Math.min(value, 0.8).toFixed(2));
+  return Number(Math.min(value, 0.9).toFixed(2));
 }
 
 async function fetchSourceHtml(url: string) {
@@ -792,6 +773,7 @@ export async function GET(request: Request) {
         source.source_url,
         source.name
       );
+
       candidatesFoundCount += extractedLinks.length;
 
       let insertedForSource = 0;
@@ -901,7 +883,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    mode: "free_keyword_scan",
+    mode: "free_job_competition_scan",
     runId,
     checkedSources: activeSources.length,
     successfulSources: successCount,
