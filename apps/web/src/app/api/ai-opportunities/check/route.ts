@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { cities, opportunityTypes, professionAreas } from "@/lib/options";
+import { cities, professionAreas } from "@/lib/options";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,23 +13,80 @@ type OpportunitySource = {
   city: string | null;
 };
 
-type ExtractedCandidate = {
+type ExtractedLink = {
   title: string;
-  organization: string | null;
-  opportunity_type: string | null;
-  profession_area: string | null;
-  city: string | null;
-  description: string | null;
-  source_url: string | null;
-  deadline: string | null;
-  ai_summary: string | null;
-  ai_reason: string | null;
-  ai_confidence: number;
+  url: string;
+  matchedKeywords: string[];
 };
 
-type AiExtractionResult = {
-  candidates: ExtractedCandidate[];
-};
+const keywordRules = [
+  "ilan",
+  "duyuru",
+  "personel",
+  "personel alımı",
+  "alım",
+  "alımı",
+  "başvuru",
+  "son başvuru",
+  "işçi",
+  "memur",
+  "sözleşmeli",
+  "sürekli işçi",
+  "uzman",
+  "uzman yardımcısı",
+  "akademik",
+  "öğretim görevlisi",
+  "araştırma görevlisi",
+  "staj",
+  "stajyer",
+  "kariyer",
+  "iş başvurusu",
+  "yarışma",
+  "proje yarışması",
+  "fikir yarışması",
+  "ödül",
+  "finalist",
+  "tübitak",
+  "teknofest",
+  "2204",
+  "2209",
+  "proje çağrısı",
+  "burs",
+  "eğitim",
+  "kurs",
+  "sertifika",
+  "katılım belgesi",
+  "meb sertifikası",
+  "online eğitim",
+  "uzaktan eğitim",
+  "ücretsiz eğitim",
+  "kontenjan",
+];
+
+const ignoredTitlePatterns = [
+  "ana sayfa",
+  "anasayfa",
+  "home",
+  "iletişim",
+  "kurumsal",
+  "hakkımızda",
+  "site haritası",
+  "gizlilik",
+  "kvkk",
+  "çerez",
+  "facebook",
+  "twitter",
+  "x.com",
+  "instagram",
+  "youtube",
+  "linkedin",
+  "tüm duyurular",
+  "tüm ilanlar",
+  "devamını oku",
+  "detay",
+  "detaylar",
+  "daha fazla",
+];
 
 function unauthorized() {
   return NextResponse.json(
@@ -41,13 +98,8 @@ function unauthorized() {
   );
 }
 
-function htmlToText(html: string) {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
-    .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
+function normalizeText(value: string) {
+  return value
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
@@ -58,78 +110,299 @@ function htmlToText(html: string) {
     .trim();
 }
 
-function normalizeDate(value: string | null) {
-  if (!value) return null;
-
-  const trimmed = value.trim();
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return null;
-  }
-
-  const date = new Date(`${trimmed}T00:00:00.000Z`);
-
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  return trimmed;
+function htmlToText(html: string) {
+  return normalizeText(
+    html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+      .replace(/<svg[\s\S]*?<\/svg>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+  );
 }
 
-function normalizeConfidence(value: number) {
-  if (!Number.isFinite(value)) return 0;
-
-  if (value < 0) return 0;
-  if (value > 1) return 1;
-
-  return Number(value.toFixed(2));
+function stripHtml(value: string) {
+  return htmlToText(value)
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function normalizeUrl(value: string | null, fallbackUrl: string) {
+function isIgnoredTitle(title: string) {
+  const lowered = title.toLocaleLowerCase("tr-TR");
+
+  if (title.length < 8) return true;
+  if (title.length > 240) return true;
+
+  return ignoredTitlePatterns.some((pattern) => lowered.includes(pattern));
+}
+
+function findMatchedKeywords(text: string) {
+  const lowered = text.toLocaleLowerCase("tr-TR");
+
+  return keywordRules.filter((keyword) =>
+    lowered.includes(keyword.toLocaleLowerCase("tr-TR"))
+  );
+}
+
+function normalizeUrl(value: string, fallbackUrl: string) {
   if (!value) return fallbackUrl;
 
+  if (
+    value.startsWith("#") ||
+    value.startsWith("javascript:") ||
+    value.startsWith("mailto:") ||
+    value.startsWith("tel:")
+  ) {
+    return "";
+  }
+
   try {
-    return new URL(value).toString();
+    return new URL(value, fallbackUrl).toString();
   } catch {
-    try {
-      return new URL(value, fallbackUrl).toString();
-    } catch {
-      return fallbackUrl;
-    }
+    return "";
   }
 }
 
-function extractOutputText(data: unknown) {
-  const response = data as {
-    output_text?: string;
-    output?: Array<{
-      content?: Array<{
-        type?: string;
-        text?: string;
-      }>;
-    }>;
-  };
+function extractLinksFromHtml(html: string, baseUrl: string) {
+  const links: ExtractedLink[] = [];
+  const seenUrls = new Set<string>();
 
-  if (typeof response.output_text === "string") {
-    return response.output_text;
+  const anchorRegex =
+    /<a\s+[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+
+  let match: RegExpExecArray | null;
+
+  while ((match = anchorRegex.exec(html)) !== null) {
+    const href = match[1];
+    const innerHtml = match[2];
+
+    const title = stripHtml(innerHtml);
+    const url = normalizeUrl(href, baseUrl);
+
+    if (!url || seenUrls.has(url)) continue;
+    if (isIgnoredTitle(title)) continue;
+
+    const matchedKeywords = findMatchedKeywords(`${title} ${url}`);
+
+    if (matchedKeywords.length === 0) continue;
+
+    seenUrls.add(url);
+
+    links.push({
+      title,
+      url,
+      matchedKeywords,
+    });
+
+    if (links.length >= 12) break;
   }
 
-  const parts: string[] = [];
-
-  for (const item of response.output || []) {
-    for (const content of item.content || []) {
-      if (typeof content.text === "string") {
-        parts.push(content.text);
-      }
-    }
-  }
-
-  return parts.join("\n").trim();
+  return links;
 }
 
-async function fetchSourceText(url: string) {
+function inferOpportunityType(text: string, sourceName: string) {
+  const lowered = `${text} ${sourceName}`.toLocaleLowerCase("tr-TR");
+
+  if (
+    lowered.includes("yarışma") ||
+    lowered.includes("teknofest") ||
+    lowered.includes("tübitak") ||
+    lowered.includes("2204") ||
+    lowered.includes("2209") ||
+    lowered.includes("ödül") ||
+    lowered.includes("proje çağrısı")
+  ) {
+    return "Yarışma";
+  }
+
+  if (
+    lowered.includes("eğitim") ||
+    lowered.includes("kurs") ||
+    lowered.includes("sertifika") ||
+    lowered.includes("katılım belgesi") ||
+    lowered.includes("uzaktan eğitim") ||
+    lowered.includes("online eğitim")
+  ) {
+    return "Eğitim";
+  }
+
+  if (lowered.includes("staj") || lowered.includes("stajyer")) {
+    return "Staj";
+  }
+
+  if (lowered.includes("burs")) {
+    return "Burs";
+  }
+
+  if (
+    lowered.includes("akademik") ||
+    lowered.includes("öğretim görevlisi") ||
+    lowered.includes("araştırma görevlisi")
+  ) {
+    return "Akademik ilan";
+  }
+
+  if (lowered.includes("sözleşmeli")) {
+    return "Sözleşmeli personel";
+  }
+
+  if (lowered.includes("işçi")) {
+    return "Sürekli işçi alımı";
+  }
+
+  if (lowered.includes("belediye")) {
+    return "Belediye ilanı";
+  }
+
+  if (
+    lowered.includes("personel") ||
+    lowered.includes("memur") ||
+    lowered.includes("alım") ||
+    lowered.includes("alımı")
+  ) {
+    return "Kamu alımı";
+  }
+
+  return "Diğer";
+}
+
+function inferProfessionArea(text: string, fallback: string | null) {
+  const lowered = text.toLocaleLowerCase("tr-TR");
+
+  const directMatch = professionAreas.find((profession) =>
+    lowered.includes(profession.toLocaleLowerCase("tr-TR"))
+  );
+
+  if (directMatch) return directMatch;
+
+  const rules: Array<{ area: string; keywords: string[] }> = [
+    {
+      area: "Şehir ve Bölge Planlama",
+      keywords: ["şehir plancısı", "şehir planlama", "bölge planlama", "imar", "planlama"],
+    },
+    {
+      area: "CBS / GIS",
+      keywords: ["cbs", "gis", "coğrafi bilgi", "mekansal veri", "mekânsal veri"],
+    },
+    {
+      area: "Mimarlık",
+      keywords: ["mimar", "mimarlık"],
+    },
+    {
+      area: "Peyzaj Mimarlığı",
+      keywords: ["peyzaj"],
+    },
+    {
+      area: "Harita Mühendisliği",
+      keywords: ["harita", "geomatik", "kadastro"],
+    },
+    {
+      area: "Yazılım / Bilişim",
+      keywords: ["yazılım", "bilişim", "programcı", "developer", "web", "mobil uygulama"],
+    },
+    {
+      area: "Veri Analizi",
+      keywords: ["veri", "data", "analist", "raporlama"],
+    },
+    {
+      area: "Öğretmenlik",
+      keywords: ["öğretmen", "öğretmenlik"],
+    },
+    {
+      area: "Hukuk",
+      keywords: ["avukat", "hukuk", "hukukçu"],
+    },
+    {
+      area: "İş Sağlığı ve Güvenliği",
+      keywords: ["iş güvenliği", "isg"],
+    },
+    {
+      area: "Muhasebe",
+      keywords: ["muhasebe", "mali müşavir"],
+    },
+    {
+      area: "İnsan Kaynakları",
+      keywords: ["insan kaynakları", "ik uzmanı"],
+    },
+    {
+      area: "Hemşirelik",
+      keywords: ["hemşire"],
+    },
+    {
+      area: "Tıp",
+      keywords: ["doktor", "hekim", "tabip"],
+    },
+    {
+      area: "Tekniker / Teknisyen",
+      keywords: ["tekniker", "teknisyen"],
+    },
+  ];
+
+  const matchedRule = rules.find((rule) =>
+    rule.keywords.some((keyword) => lowered.includes(keyword))
+  );
+
+  if (matchedRule) return matchedRule.area;
+
+  return fallback || "Diğer";
+}
+
+function inferCity(text: string, fallback: string | null) {
+  const lowered = text.toLocaleLowerCase("tr-TR");
+
+  if (lowered.includes("uzaktan") || lowered.includes("remote")) {
+    return "Uzaktan";
+  }
+
+  if (lowered.includes("türkiye geneli")) {
+    return "Türkiye Geneli";
+  }
+
+  const matchedCity = cities.find((city) =>
+    lowered.includes(city.toLocaleLowerCase("tr-TR"))
+  );
+
+  if (matchedCity) return matchedCity;
+
+  return fallback || "Türkiye Geneli";
+}
+
+function extractDeadline(text: string) {
+  const dateMatch = text.match(
+    /(\d{1,2})[./-](\d{1,2})[./-](20\d{2})/
+  );
+
+  if (!dateMatch) return null;
+
+  const day = dateMatch[1].padStart(2, "0");
+  const month = dateMatch[2].padStart(2, "0");
+  const year = dateMatch[3];
+
+  const normalized = `${year}-${month}-${day}`;
+  const date = new Date(`${normalized}T00:00:00.000Z`);
+
+  if (Number.isNaN(date.getTime())) return null;
+
+  return normalized;
+}
+
+function buildDescription(params: {
+  title: string;
+  sourceName: string;
+  opportunityType: string;
+}) {
+  return `${params.title} başlıklı kayıt, ${params.sourceName} kaynağında anahtar kelime taramasıyla aday fırsat olarak yakalanmıştır. Fırsat türü otomatik olarak "${params.opportunityType}" şeklinde sınıflandırılmıştır. Yayına almadan önce kaynak bağlantısı üzerinden detaylar kontrol edilmelidir.`;
+}
+
+function buildConfidence(keywordCount: number) {
+  const value = 0.45 + Math.min(keywordCount, 5) * 0.07;
+
+  return Number(Math.min(value, 0.8).toFixed(2));
+}
+
+async function fetchSourceHtml(url: string) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), 12000);
 
   try {
     const response = await fetch(url, {
@@ -148,18 +421,19 @@ async function fetchSourceText(url: string) {
       return {
         ok: false,
         status: response.status,
+        html: "",
         text: "",
         error: `HTTP ${response.status}`,
       };
     }
 
     const html = await response.text();
-    const text = htmlToText(html).slice(0, 18000);
 
     return {
       ok: true,
       status: response.status,
-      text,
+      html: html.slice(0, 250000),
+      text: htmlToText(html).slice(0, 6000),
       error: null,
     };
   } catch (error) {
@@ -168,156 +442,19 @@ async function fetchSourceText(url: string) {
     return {
       ok: false,
       status: null,
+      html: "",
       text: "",
       error: error instanceof Error ? error.message : "Unknown fetch error",
     };
   }
 }
 
-async function extractOpportunitiesWithAi(params: {
-  source: OpportunitySource;
-  pageText: string;
-  openAiApiKey: string;
-}) {
-  const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+function getSourceLimit() {
+  const rawLimit = Number(process.env.SOURCE_CHECK_LIMIT || 8);
 
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${params.openAiApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      input: [
-        {
-          role: "system",
-          content:
-            "Sen KariyerAtlas için çalışan bir fırsat çıkarım asistanısın. Sadece gerçek kariyer fırsatlarını çıkar: iş ilanı, kamu alımı, belediye ilanı, staj, eğitim, yarışma, burs, meslek odası duyurusu, gönüllülük, uzaktan çalışma veya proje bazlı iş. Genel haberleri, siyasi duyuruları, etkinlik olmayan haberleri ve belirsiz metinleri fırsat olarak çıkarma. Emin değilsen candidates dizisini boş döndür.",
-        },
-        {
-          role: "user",
-          content: [
-            `Kaynak adı: ${params.source.name}`,
-            `Kaynak URL: ${params.source.source_url}`,
-            `Varsayılan meslek alanı: ${params.source.profession_area || "Belirsiz"}`,
-            `Varsayılan şehir: ${params.source.city || "Belirsiz"}`,
-            "",
-            `Geçerli fırsat türleri: ${opportunityTypes.join(", ")}`,
-            `Geçerli meslek alanları: ${professionAreas.join(", ")}`,
-            `Geçerli şehirler: ${cities.join(", ")}`,
-            "",
-            "Aşağıdaki sayfa metninden en fazla 5 adet güncel ve anlamlı kariyer fırsatı çıkar.",
-            "deadline alanını yalnızca kesin tarih varsa YYYY-MM-DD formatında ver; yoksa null ver.",
-            "opportunity_type, profession_area ve city alanlarını mümkünse verilen listelerden seç.",
-            "source_url alanı fırsatın detay linki değilse kaynak URL olarak kalabilir.",
-            "",
-            "SAYFA METNİ:",
-            params.pageText,
-          ].join("\n"),
-        },
-      ],
-      max_output_tokens: 1600,
-      text: {
-        format: {
-          type: "json_schema",
-          name: "kariyeratlas_opportunity_extraction",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              candidates: {
-                type: "array",
-                maxItems: 5,
-                items: {
-                  type: "object",
-                  additionalProperties: false,
-                  properties: {
-                    title: {
-                      type: "string",
-                      description: "Fırsat başlığı.",
-                    },
-                    organization: {
-                      type: ["string", "null"],
-                      description: "Kurum, belediye, firma veya organizasyon adı.",
-                    },
-                    opportunity_type: {
-                      type: ["string", "null"],
-                      description: "Fırsat türü.",
-                    },
-                    profession_area: {
-                      type: ["string", "null"],
-                      description: "Meslek veya uzmanlık alanı.",
-                    },
-                    city: {
-                      type: ["string", "null"],
-                      description: "Şehir, Türkiye Geneli veya Uzaktan.",
-                    },
-                    description: {
-                      type: ["string", "null"],
-                      description: "Kısa ve sade açıklama.",
-                    },
-                    source_url: {
-                      type: ["string", "null"],
-                      description: "Detay URL'si veya kaynak URL.",
-                    },
-                    deadline: {
-                      type: ["string", "null"],
-                      description: "YYYY-MM-DD formatında son başvuru tarihi veya null.",
-                    },
-                    ai_summary: {
-                      type: ["string", "null"],
-                      description: "Kısa özet.",
-                    },
-                    ai_reason: {
-                      type: ["string", "null"],
-                      description: "Neden fırsat olarak değerlendirildiği.",
-                    },
-                    ai_confidence: {
-                      type: "number",
-                      description: "0 ile 1 arasında güven skoru.",
-                    },
-                  },
-                  required: [
-                    "title",
-                    "organization",
-                    "opportunity_type",
-                    "profession_area",
-                    "city",
-                    "description",
-                    "source_url",
-                    "deadline",
-                    "ai_summary",
-                    "ai_reason",
-                    "ai_confidence",
-                  ],
-                },
-              },
-            },
-            required: ["candidates"],
-          },
-        },
-      },
-    }),
-  });
+  if (!Number.isFinite(rawLimit)) return 8;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-
-    throw new Error(`OpenAI API error ${response.status}: ${errorText.slice(0, 500)}`);
-  }
-
-  const data = await response.json();
-  const outputText = extractOutputText(data);
-
-  if (!outputText) {
-    return {
-      candidates: [],
-    } satisfies AiExtractionResult;
-  }
-
-  return JSON.parse(outputText) as AiExtractionResult;
+  return Math.max(1, Math.min(rawLimit, 15));
 }
 
 export async function GET(request: Request) {
@@ -333,23 +470,12 @@ export async function GET(request: Request) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const openAiApiKey = process.env.OPENAI_API_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
     return NextResponse.json(
       {
         ok: false,
         error: "Supabase environment variables are missing.",
-      },
-      { status: 500 }
-    );
-  }
-
-  if (!openAiApiKey) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "OPENAI_API_KEY is missing.",
       },
       { status: 500 }
     );
@@ -380,13 +506,14 @@ export async function GET(request: Request) {
   }
 
   const runId = run.id as string;
+  const sourceLimit = getSourceLimit();
 
   const { data: sources, error: sourcesError } = await supabase
     .from("opportunity_sources")
     .select("id,name,source_url,profession_area,city")
     .eq("is_active", true)
-    .order("created_at", { ascending: true })
-    .limit(5);
+    .order("last_checked_at", { ascending: true })
+    .limit(sourceLimit);
 
   if (sourcesError) {
     await supabase
@@ -419,7 +546,7 @@ export async function GET(request: Request) {
   const sourceResults: Array<{
     name: string;
     ok: boolean;
-    candidatesFound: number;
+    linksFound: number;
     candidatesInserted: number;
     error: string | null;
   }> = [];
@@ -428,7 +555,7 @@ export async function GET(request: Request) {
     const checkedAt = new Date().toISOString();
 
     try {
-      const page = await fetchSourceText(source.source_url);
+      const page = await fetchSourceHtml(source.source_url);
 
       if (!page.ok) {
         errorCount += 1;
@@ -445,7 +572,7 @@ export async function GET(request: Request) {
         sourceResults.push({
           name: source.name,
           ok: false,
-          candidatesFound: 0,
+          linksFound: 0,
           candidatesInserted: 0,
           error: page.error || "Source check failed.",
         });
@@ -465,42 +592,24 @@ export async function GET(request: Request) {
         })
         .eq("id", source.id);
 
-      if (page.text.length < 300) {
-        sourceResults.push({
-          name: source.name,
-          ok: true,
-          candidatesFound: 0,
-          candidatesInserted: 0,
-          error: "Page text was too short for AI extraction.",
-        });
-
-        continue;
-      }
-
-      const extraction = await extractOpportunitiesWithAi({
-        source,
-        pageText: page.text,
-        openAiApiKey,
-      });
-
-      const candidates = extraction.candidates || [];
-      candidatesFoundCount += candidates.length;
+      const extractedLinks = extractLinksFromHtml(page.html, source.source_url);
+      candidatesFoundCount += extractedLinks.length;
 
       let insertedForSource = 0;
 
-      for (const candidate of candidates) {
-        const sourceUrl = normalizeUrl(candidate.source_url, source.source_url);
-
+      for (const link of extractedLinks) {
         const { data: existingCandidate } = await supabase
           .from("opportunity_candidates")
           .select("id")
-          .eq("source_url", sourceUrl)
+          .eq("source_url", link.url)
+          .limit(1)
           .maybeSingle();
 
         const { data: existingPublished } = await supabase
           .from("opportunities")
           .select("id")
-          .eq("source_url", sourceUrl)
+          .eq("source_url", link.url)
+          .limit(1)
           .maybeSingle();
 
         if (existingCandidate || existingPublished) {
@@ -508,37 +617,46 @@ export async function GET(request: Request) {
           continue;
         }
 
-        const confidence = normalizeConfidence(candidate.ai_confidence);
+        const contextText = `${link.title} ${source.name} ${page.text.slice(0, 500)}`;
+        const opportunityType = inferOpportunityType(contextText, source.name);
+        const professionArea = inferProfessionArea(contextText, source.profession_area);
+        const city = inferCity(contextText, source.city);
+        const deadline = extractDeadline(contextText);
+        const confidence = buildConfidence(link.matchedKeywords.length);
 
         const { error: insertError } = await supabase
           .from("opportunity_candidates")
           .insert({
             source_id: source.id,
-            title: candidate.title.slice(0, 250),
-            organization: candidate.organization || source.name,
-            opportunity_type: candidate.opportunity_type || "Diğer",
-            profession_area: candidate.profession_area || source.profession_area,
-            city: candidate.city || source.city,
-            description: candidate.description,
-            source_url: sourceUrl,
-            deadline: normalizeDate(candidate.deadline),
-            ai_summary: candidate.ai_summary,
-            ai_reason: candidate.ai_reason,
+            title: link.title.slice(0, 250),
+            organization: source.name,
+            opportunity_type: opportunityType,
+            profession_area: professionArea,
+            city,
+            description: buildDescription({
+              title: link.title,
+              sourceName: source.name,
+              opportunityType,
+            }),
+            source_url: link.url,
+            deadline,
+            ai_summary: "Ücretsiz anahtar kelime taramasıyla yakalandı.",
+            ai_reason: `Eşleşen kelimeler: ${link.matchedKeywords.join(", ")}`,
             ai_confidence: confidence,
-            raw_text: page.text.slice(0, 5000),
+            raw_text: contextText.slice(0, 5000),
             review_status: "pending",
           });
 
         if (!insertError) {
-          candidatesInsertedCount += 1;
           insertedForSource += 1;
+          candidatesInsertedCount += 1;
         }
       }
 
       sourceResults.push({
         name: source.name,
         ok: true,
-        candidatesFound: candidates.length,
+        linksFound: extractedLinks.length,
         candidatesInserted: insertedForSource,
         error: null,
       });
@@ -559,7 +677,7 @@ export async function GET(request: Request) {
       sourceResults.push({
         name: source.name,
         ok: false,
-        candidatesFound: 0,
+        linksFound: 0,
         candidatesInserted: 0,
         error: message,
       });
@@ -576,7 +694,7 @@ export async function GET(request: Request) {
       duplicates_skipped_count: duplicatesSkippedCount,
       error_message:
         errorCount > 0
-          ? `${errorCount} source check or AI extraction failed.`
+          ? `${errorCount} source check failed.`
           : null,
       finished_at: new Date().toISOString(),
     })
@@ -584,6 +702,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ok: true,
+    mode: "free_keyword_scan",
     runId,
     checkedSources: activeSources.length,
     successfulSources: successCount,
