@@ -82,10 +82,33 @@ const ignoredTitlePatterns = [
   "linkedin",
   "tüm duyurular",
   "tüm ilanlar",
+  "tüm haberler",
   "devamını oku",
   "detay",
   "detaylar",
   "daha fazla",
+];
+
+const ignoredExactTitles = [
+  "duyurular",
+  "duyuru",
+  "ilanlar",
+  "ilan",
+  "haberler",
+  "haber",
+  "etkinlikler",
+  "etkinlik",
+  "eğitimler",
+  "eğitim",
+  "yarışmalar",
+  "yarışma",
+  "başvurular",
+  "başvuru",
+  "kurslar",
+  "kurs",
+  "tümü",
+  "listele",
+  "okunabilir hale getir",
 ];
 
 function unauthorized() {
@@ -128,10 +151,23 @@ function stripHtml(value: string) {
 }
 
 function isIgnoredTitle(title: string) {
-  const lowered = title.toLocaleLowerCase("tr-TR");
+  const cleanTitle = title
+    .replace(/[\s\n\r\t]+/g, " ")
+    .replace(/[.,:;|/\\-]+$/g, "")
+    .trim();
 
-  if (title.length < 8) return true;
-  if (title.length > 240) return true;
+  const lowered = cleanTitle.toLocaleLowerCase("tr-TR");
+
+  if (cleanTitle.length < 10) return true;
+  if (cleanTitle.length > 240) return true;
+
+  if (ignoredExactTitles.includes(lowered)) return true;
+
+  const wordCount = cleanTitle.split(" ").filter(Boolean).length;
+
+  if (wordCount < 2 && !/\d{4}|\d{1,2}[./-]\d{1,2}/.test(cleanTitle)) {
+    return true;
+  }
 
   return ignoredTitlePatterns.some((pattern) => lowered.includes(pattern));
 }
@@ -183,8 +219,34 @@ function extractLinksFromHtml(html: string, baseUrl: string) {
     if (isIgnoredTitle(title)) continue;
 
     const matchedKeywords = findMatchedKeywords(`${title} ${url}`);
+    const strongSignal = [
+      "personel",
+      "personel alımı",
+      "sözleşmeli",
+      "sürekli işçi",
+      "memur",
+      "staj",
+      "stajyer",
+      "yarışma",
+      "proje yarışması",
+      "fikir yarışması",
+      "tübitak",
+      "teknofest",
+      "2204",
+      "2209",
+      "burs",
+      "sertifika",
+      "katılım belgesi",
+      "kurs",
+      "ücretsiz eğitim",
+      "son başvuru",
+      "başvuru",
+    ].some((keyword) =>
+      `${title} ${url}`.toLocaleLowerCase("tr-TR").includes(keyword)
+    );
 
     if (matchedKeywords.length === 0) continue;
+    if (!strongSignal && !/\d{1,2}[./-]\d{1,2}[./-]20\d{2}/.test(title)) continue;
 
     seenUrls.add(url);
 
