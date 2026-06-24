@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { cities, opportunityTypes, professionAreas } from "@/lib/options";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,10 @@ type Candidate = {
 type PageProps = {
   searchParams?: Promise<{
     status?: string;
+    profession?: string;
+    type?: string;
+    city?: string;
+    q?: string;
     candidate_approve?: string;
     candidate_reject?: string;
   }>;
@@ -48,6 +53,20 @@ function statusClass(status: string) {
   if (status === "rejected") return "bg-red-500/15 text-red-300";
   if (status === "duplicate") return "bg-slate-500/15 text-slate-300";
   return "bg-slate-500/15 text-slate-300";
+}
+
+function uniqueValues(values: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => value?.trim())
+        .filter((value): value is string => Boolean(value))
+    )
+  ).sort((a, b) => a.localeCompare(b, "tr"));
+}
+
+function cleanSearch(value: string) {
+  return value.trim().replace(/[,%]/g, "").slice(0, 80);
 }
 
 function getFeedback(params: Awaited<PageProps["searchParams"]>) {
@@ -91,6 +110,10 @@ export default async function CandidateOpportunitiesPage({
 }: PageProps) {
   const params = await searchParams;
   const selectedStatus = params?.status || "pending";
+  const selectedProfession = params?.profession || "all";
+  const selectedType = params?.type || "all";
+  const selectedCity = params?.city || "all";
+  const searchTerm = cleanSearch(params?.q || "");
   const feedback = getFeedback(params);
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -112,16 +135,67 @@ export default async function CandidateOpportunitiesPage({
     },
   });
 
+  const [professionRowsResult, typeRowsResult, cityRowsResult] = await Promise.all([
+    supabase
+      .from("opportunity_candidates")
+      .select("profession_area")
+      .not("profession_area", "is", null)
+      .limit(1000),
+    supabase
+      .from("opportunity_candidates")
+      .select("opportunity_type")
+      .not("opportunity_type", "is", null)
+      .limit(1000),
+    supabase
+      .from("opportunity_candidates")
+      .select("city")
+      .not("city", "is", null)
+      .limit(1000),
+  ]);
+
+  const professionOptions = uniqueValues([
+    ...professionAreas,
+    ...((professionRowsResult.data || []).map((row) => row.profession_area) || []),
+  ]);
+
+  const typeOptions = uniqueValues([
+    ...opportunityTypes,
+    ...((typeRowsResult.data || []).map((row) => row.opportunity_type) || []),
+  ]);
+
+  const cityOptions = uniqueValues([
+    ...cities,
+    ...((cityRowsResult.data || []).map((row) => row.city) || []),
+  ]);
+
   let query = supabase
     .from("opportunity_candidates")
     .select(
       "id,title,organization,opportunity_type,profession_area,city,description,source_url,deadline,ai_summary,ai_reason,ai_confidence,review_status,created_at"
     )
     .order("created_at", { ascending: false })
-    .limit(80);
+    .limit(120);
 
   if (selectedStatus !== "all") {
     query = query.eq("review_status", selectedStatus);
+  }
+
+  if (selectedProfession !== "all") {
+    query = query.eq("profession_area", selectedProfession);
+  }
+
+  if (selectedType !== "all") {
+    query = query.eq("opportunity_type", selectedType);
+  }
+
+  if (selectedCity !== "all") {
+    query = query.eq("city", selectedCity);
+  }
+
+  if (searchTerm) {
+    query = query.or(
+      `title.ilike.%${searchTerm}%,organization.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`
+    );
   }
 
   const { data, error } = await query;
@@ -131,6 +205,20 @@ export default async function CandidateOpportunitiesPage({
     .from("opportunity_candidates")
     .select("id", { count: "exact", head: true })
     .eq("review_status", "pending");
+
+  const { count: filteredCount } = await supabase
+    .from("opportunity_candidates")
+    .select("id", { count: "exact", head: true })
+    .match(
+      Object.fromEntries(
+        [
+          selectedStatus !== "all" ? ["review_status", selectedStatus] : null,
+          selectedProfession !== "all" ? ["profession_area", selectedProfession] : null,
+          selectedType !== "all" ? ["opportunity_type", selectedType] : null,
+          selectedCity !== "all" ? ["city", selectedCity] : null,
+        ].filter(Boolean) as Array<[string, string]>
+      )
+    );
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-10 text-white lg:px-8">
@@ -150,12 +238,12 @@ export default async function CandidateOpportunitiesPage({
 
             <p className="mt-3 max-w-3xl text-slate-400">
               Günlük ücretsiz tarama sistemiyle yakalanan fırsat adaylarını
-              buradan inceleyebilir, uygun olanları tek tıkla yayına
-              alabilirsin.
+              meslek, ilan türü, şehir ve inceleme durumuna göre filtreleyip
+              uygun olanları yayına alabilirsin.
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <a
               href="/admin/firsatlar"
               className="rounded-2xl border border-white/10 px-5 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
@@ -167,6 +255,13 @@ export default async function CandidateOpportunitiesPage({
               <p className="text-sm text-slate-400">Onay bekleyen</p>
               <p className="mt-1 text-3xl font-semibold">
                 {pendingCount || 0}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-white/[0.03] px-6 py-4">
+              <p className="text-sm text-slate-400">Filtre sonucu</p>
+              <p className="mt-1 text-3xl font-semibold">
+                {searchTerm ? candidates.length : filteredCount || candidates.length}
               </p>
             </div>
           </div>
@@ -189,7 +284,19 @@ export default async function CandidateOpportunitiesPage({
         ) : null}
 
         <form className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-          <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+          <div className="grid gap-4 lg:grid-cols-5">
+            <div>
+              <label className="mb-2 block text-sm text-slate-300">
+                Arama
+              </label>
+              <input
+                name="q"
+                defaultValue={searchTerm}
+                placeholder="Başlık, kurum, açıklama..."
+                className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-blue-400"
+              />
+            </div>
+
             <div>
               <label className="mb-2 block text-sm text-slate-300">
                 İnceleme durumu
@@ -207,12 +314,75 @@ export default async function CandidateOpportunitiesPage({
               </select>
             </div>
 
+            <div>
+              <label className="mb-2 block text-sm text-slate-300">
+                Meslek / Alan
+              </label>
+              <select
+                name="profession"
+                defaultValue={selectedProfession}
+                className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+              >
+                <option value="all">Tüm meslekler</option>
+                {professionOptions.map((profession) => (
+                  <option key={profession} value={profession}>
+                    {profession}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm text-slate-300">
+                İlan türü
+              </label>
+              <select
+                name="type"
+                defaultValue={selectedType}
+                className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+              >
+                <option value="all">Tüm türler</option>
+                {typeOptions.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm text-slate-300">
+                Şehir
+              </label>
+              <select
+                name="city"
+                defaultValue={selectedCity}
+                className="w-full rounded-2xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-blue-400"
+              >
+                <option value="all">Tüm şehirler</option>
+                {cityOptions.map((city) => (
+                  <option key={city} value={city}>
+                    {city}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3">
             <button
               type="submit"
               className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-500"
             >
               Filtrele
             </button>
+
+            <a
+              href="/admin/aday-firsatlar"
+              className="rounded-2xl border border-white/10 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white"
+            >
+              Filtreleri temizle
+            </a>
           </div>
         </form>
 
@@ -237,6 +407,12 @@ export default async function CandidateOpportunitiesPage({
                       {candidate.opportunity_type ? (
                         <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs text-blue-300">
                           {candidate.opportunity_type}
+                        </span>
+                      ) : null}
+
+                      {candidate.profession_area ? (
+                        <span className="rounded-full bg-violet-500/15 px-3 py-1 text-xs text-violet-200">
+                          {candidate.profession_area}
                         </span>
                       ) : null}
 
@@ -267,12 +443,6 @@ export default async function CandidateOpportunitiesPage({
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-2 text-xs text-slate-300">
-                  {candidate.profession_area ? (
-                    <span className="rounded-full bg-white/[0.06] px-3 py-1">
-                      {candidate.profession_area}
-                    </span>
-                  ) : null}
-
                   {candidate.city ? (
                     <span className="rounded-full bg-white/[0.06] px-3 py-1">
                       {candidate.city}
@@ -362,7 +532,7 @@ export default async function CandidateOpportunitiesPage({
                 Bu filtrede aday fırsat yok.
               </p>
               <p className="mt-2 text-sm text-slate-400">
-                Günlük tarama çalıştığında uygun kayıtlar burada görünecek.
+                Farklı meslek, tür veya şehir filtresi deneyebilirsin.
               </p>
             </div>
           )}
