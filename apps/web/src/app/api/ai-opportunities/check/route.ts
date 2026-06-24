@@ -131,6 +131,11 @@ const noiseTitlePatterns = [
   "yerleştirme sonucu",
   "başvuru süresi uzatıldı",
   "başvuru süresi uzatılmıştır",
+  "sınav duyurusu",
+  "sinav duyurusu",
+  "sınavına ilişkin",
+  "sinavina iliskin",
+  "girmeye hak kazanan",
 ];
 
 const ignoredExactTitles = [
@@ -178,6 +183,11 @@ const resultAnnouncementPatterns = [
   "sınava girmeye hak kazanan",
   "başvuru süresi uzatıldı",
   "başvuru süresi uzatılmıştır",
+  "sınav duyurusu",
+  "sinav duyurusu",
+  "sınavına ilişkin",
+  "sinavina iliskin",
+  "girmeye hak kazanan",
 ];
 
 const lowValueJobPatterns = [
@@ -221,6 +231,17 @@ const strictPlanningKeywords = [
   "planlama uzman yardimcisi",
   "il planlama uzman yardımcısı",
   "il planlama uzman yardimcisi",
+];
+
+const strictLandscapeKeywords = [
+  "peyzaj mimarı",
+  "peyzaj mimari",
+  "peyzaj mimarlığı",
+  "peyzaj mimarligi",
+  "peyzaj teknikeri",
+  "peyzaj teknisyeni",
+  "peyzaj uzmanı",
+  "peyzaj uzmani",
 ];
 
 const turkishMonthMap: Record<string, number> = {
@@ -312,6 +333,10 @@ function containsLowValueJob(text: string) {
 
 function containsStrictPlanningKeyword(text: string) {
   return hasAnyKeyword(text, strictPlanningKeywords);
+}
+
+function containsStrictLandscapeKeyword(text: string) {
+  return hasAnyKeyword(text, strictLandscapeKeywords);
 }
 
 function toDateOnly(value: Date) {
@@ -682,8 +707,10 @@ function inferProfessionArea(text: string, fallback: string | null) {
   if (containsLowValueJob(lowered)) return "Diğer";
 
   const planningMatch = containsStrictPlanningKeyword(lowered);
+  const landscapeMatch = containsStrictLandscapeKeyword(lowered);
 
   if (planningMatch) return "Şehir ve Bölge Planlama";
+  if (landscapeMatch) return "Peyzaj Mimarlığı";
 
   const directMatch = professionAreas.find((profession) => {
     const normalizedProfession = profession.toLocaleLowerCase("tr-TR");
@@ -708,7 +735,7 @@ function inferProfessionArea(text: string, fallback: string | null) {
     },
     {
       area: "Peyzaj Mimarlığı",
-      keywords: ["peyzaj"],
+      keywords: strictLandscapeKeywords,
     },
     {
       area: "Harita Mühendisliği",
@@ -763,6 +790,10 @@ function inferProfessionArea(text: string, fallback: string | null) {
   if (matchedRule) return matchedRule.area;
 
   if (fallback === "Şehir ve Bölge Planlama" && !planningMatch) {
+    return "Diğer";
+  }
+
+  if (fallback === "Peyzaj Mimarlığı" && !landscapeMatch) {
     return "Diğer";
   }
 
@@ -1038,20 +1069,24 @@ export async function GET(request: Request) {
           continue;
         }
 
-        const contextText = `${link.title} ${source.name} ${page.text.slice(0, 500)}`;
+        // Kararları sayfanın genel metnine göre değil, aday bağlantının kendi başlığına göre veriyoruz.
+        // Belediye/kurum menülerindeki "imar", "şehircilik", "peyzaj" gibi kelimeler yanlış meslek etiketi üretmesin.
+        const candidateText = `${link.title} ${link.url}`;
+        const classificationText = `${link.title} ${source.name}`;
+        const rawContextText = `${link.title} ${source.name} ${link.url} ${page.text.slice(0, 500)}`;
 
         if (
-          containsResultAnnouncement(contextText) ||
-          containsLowValueJob(contextText) ||
-          !isFreshEnoughCandidate(contextText)
+          containsResultAnnouncement(candidateText) ||
+          containsLowValueJob(candidateText) ||
+          !isFreshEnoughCandidate(candidateText)
         ) {
           continue;
         }
 
-        const opportunityType = inferOpportunityType(contextText, source.name);
-        const professionArea = inferProfessionArea(contextText, source.profession_area);
-        const city = inferCity(contextText, source.city);
-        const deadline = extractDeadline(contextText);
+        const opportunityType = inferOpportunityType(classificationText, source.name);
+        const professionArea = inferProfessionArea(classificationText, source.profession_area);
+        const city = inferCity(classificationText, source.city);
+        const deadline = extractDeadline(candidateText);
         const confidence = buildConfidence(link.matchedKeywords.length);
 
         const { error: insertError } = await supabase
@@ -1073,7 +1108,7 @@ export async function GET(request: Request) {
             ai_summary: "Ücretsiz iş ilanı / yarışma odaklı taramayla yakalandı.",
             ai_reason: `Eşleşen kelimeler: ${link.matchedKeywords.join(", ")}`,
             ai_confidence: confidence,
-            raw_text: contextText.slice(0, 5000),
+            raw_text: rawContextText.slice(0, 5000),
             review_status: "pending",
           });
 
@@ -1132,7 +1167,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    mode: "free_strict_openings_only_scan",
+    mode: "free_strict_openings_only_scan_v4_profession_precise",
     runId,
     checkedSources: activeSources.length,
     successfulSources: successCount,
