@@ -118,6 +118,19 @@ const noiseTitlePatterns = [
   "spor başvuru",
   "sosyal yardım",
   "yardım başvuru",
+  "sınav sonucu",
+  "sınav sonuçları",
+  "yazılı sınav",
+  "sözlü sınav",
+  "mülakat sonucu",
+  "nihai liste",
+  "asil liste",
+  "asıl liste",
+  "yedek liste",
+  "kura sonucu",
+  "yerleştirme sonucu",
+  "başvuru süresi uzatıldı",
+  "başvuru süresi uzatılmıştır",
 ];
 
 const ignoredExactTitles = [
@@ -146,6 +159,90 @@ const ignoredExactTitles = [
   "\" + \"",
   "\" + \" \" + \"",
 ];
+
+const resultAnnouncementPatterns = [
+  "sonuç",
+  "sonuçları",
+  "sınav sonucu",
+  "sınav sonuçları",
+  "yazılı sınav",
+  "sözlü sınav",
+  "mülakat",
+  "asil",
+  "asıl",
+  "yedek",
+  "nihai",
+  "kura sonucu",
+  "yerleştirme",
+  "değerlendirme sonucu",
+  "sınava girmeye hak kazanan",
+  "başvuru süresi uzatıldı",
+  "başvuru süresi uzatılmıştır",
+];
+
+const lowValueJobPatterns = [
+  "geçici işçi",
+  "gecici isci",
+  "mevsimlik işçi",
+  "mevsimlik isci",
+  "beden işçisi",
+  "beden iscisi",
+  "kamyon şoförü",
+  "kamyon soforu",
+  "şoför",
+  "sofor",
+  "temizlik işçisi",
+  "temizlik iscisi",
+  "park bahçe işçisi",
+  "park bahce iscisi",
+  "garson",
+  "aşçı",
+  "asci",
+  "bekçi",
+  "bekci",
+];
+
+const strictPlanningKeywords = [
+  "şehir plancısı",
+  "sehir plancisi",
+  "şehir ve bölge plancısı",
+  "sehir ve bolge plancisi",
+  "şehir planlama",
+  "sehir planlama",
+  "bölge planlama",
+  "bolge planlama",
+  "mekansal planlama",
+  "mekânsal planlama",
+  "kentsel tasarım",
+  "kentsel tasarim",
+  "imar ve şehircilik",
+  "imar ve sehircilik",
+  "planlama uzman yardımcısı",
+  "planlama uzman yardimcisi",
+  "il planlama uzman yardımcısı",
+  "il planlama uzman yardimcisi",
+];
+
+const turkishMonthMap: Record<string, number> = {
+  ocak: 1,
+  şubat: 2,
+  subat: 2,
+  mart: 3,
+  nisan: 4,
+  mayıs: 5,
+  mayis: 5,
+  haziran: 6,
+  temmuz: 7,
+  ağustos: 8,
+  agustos: 8,
+  eylül: 9,
+  eylul: 9,
+  ekim: 10,
+  kasım: 11,
+  kasim: 11,
+  aralık: 12,
+  aralik: 12,
+};
 
 function unauthorized() {
   return NextResponse.json(
@@ -203,6 +300,132 @@ function hasAnyKeyword(text: string, keywords: string[]) {
   return keywords.some((keyword) =>
     lowered.includes(keyword.toLocaleLowerCase("tr-TR"))
   );
+}
+
+function containsResultAnnouncement(text: string) {
+  return hasAnyKeyword(text, resultAnnouncementPatterns);
+}
+
+function containsLowValueJob(text: string) {
+  return hasAnyKeyword(text, lowValueJobPatterns);
+}
+
+function containsStrictPlanningKeyword(text: string) {
+  return hasAnyKeyword(text, strictPlanningKeywords);
+}
+
+function toDateOnly(value: Date) {
+  return value.toISOString().slice(0, 10);
+}
+
+function getTodayDateOnly() {
+  const now = new Date();
+  return toDateOnly(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())));
+}
+
+function isBeforeToday(dateValue: string) {
+  return dateValue < getTodayDateOnly();
+}
+
+function extractNumericDates(text: string) {
+  const results: string[] = [];
+  const regex = /(\d{1,2})[./-](\d{1,2})[./-](20\d{2})/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    const day = match[1].padStart(2, "0");
+    const month = match[2].padStart(2, "0");
+    const year = match[3];
+    const normalized = `${year}-${month}-${day}`;
+    const date = new Date(`${normalized}T00:00:00.000Z`);
+
+    if (!Number.isNaN(date.getTime())) {
+      results.push(normalized);
+    }
+  }
+
+  return results;
+}
+
+function extractTurkishMonthDates(text: string) {
+  const results: string[] = [];
+  const regex = /(\d{1,2})\s+(Ocak|Şubat|Subat|Mart|Nisan|Mayıs|Mayis|Haziran|Temmuz|Ağustos|Agustos|Eylül|Eylul|Ekim|Kasım|Kasim|Aralık|Aralik)\s+(20\d{2})/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    const day = match[1].padStart(2, "0");
+    const monthName = match[2].toLocaleLowerCase("tr-TR");
+    const month = String(turkishMonthMap[monthName] || 0).padStart(2, "0");
+    const year = match[3];
+
+    if (month !== "00") {
+      const normalized = `${year}-${month}-${day}`;
+      const date = new Date(`${normalized}T00:00:00.000Z`);
+
+      if (!Number.isNaN(date.getTime())) {
+        results.push(normalized);
+      }
+    }
+  }
+
+  return results;
+}
+
+function extractAllDates(text: string) {
+  return [...extractNumericDates(text), ...extractTurkishMonthDates(text)].sort();
+}
+
+function hasOnlyPastExplicitDates(text: string) {
+  const dates = extractAllDates(text);
+
+  if (dates.length === 0) return false;
+
+  return dates.every((date) => isBeforeToday(date));
+}
+
+function hasPastYearSignal(text: string) {
+  const lowered = text.toLocaleLowerCase("tr-TR");
+  const currentYear = new Date().getUTCFullYear();
+
+  return [2020, 2021, 2022, 2023, 2024, 2025]
+    .filter((year) => year < currentYear)
+    .some((year) => lowered.includes(String(year)));
+}
+
+function isFreshEnoughCandidate(text: string) {
+  if (hasPastYearSignal(text)) return false;
+  if (hasOnlyPastExplicitDates(text)) return false;
+
+  return true;
+}
+
+function isStrictJobOpeningText(text: string) {
+  const lowered = text.toLocaleLowerCase("tr-TR");
+
+  if (containsResultAnnouncement(lowered)) return false;
+  if (containsLowValueJob(lowered)) return false;
+  if (!isFreshEnoughCandidate(lowered)) return false;
+
+  const openingSignals = [
+    "ilan",
+    "alım",
+    "alimi",
+    "alımı",
+    "alınacaktır",
+    "alinacaktir",
+    "istihdam",
+    "sözleşmeli personel",
+    "sozlesmeli personel",
+    "akademik personel",
+    "öğretim görevlisi",
+    "ogretim gorevlisi",
+    "araştırma görevlisi",
+    "arastirma gorevlisi",
+    "uzman yardımcısı",
+    "uzman yardimcisi",
+  ];
+
+  return hasAnyKeyword(lowered, openingSignals);
 }
 
 function getMatchedKeywords(text: string) {
@@ -318,12 +541,20 @@ function isValidOpportunityCandidate(params: {
   sourceName: string;
 }) {
   const candidateText = `${params.title} ${params.url}`;
-  const titleLowered = params.title.toLocaleLowerCase("tr-TR");
 
-  const jobSignal = hasAnyKeyword(candidateText, jobKeywords);
+  if (containsResultAnnouncement(candidateText)) return false;
+  if (containsLowValueJob(candidateText)) return false;
+  if (!isFreshEnoughCandidate(candidateText)) return false;
+
+  const jobSignal =
+    hasAnyKeyword(candidateText, jobKeywords) &&
+    isStrictJobOpeningText(candidateText);
+
   const competitionSignal =
     isCompetitionSource(params.sourceName) &&
-    hasAnyKeyword(candidateText, competitionKeywords);
+    hasAnyKeyword(candidateText, competitionKeywords) &&
+    !containsResultAnnouncement(candidateText) &&
+    isFreshEnoughCandidate(candidateText);
 
   if (isMunicipalitySource(params.sourceName)) {
     const municipalityJobSignal = hasAnyKeyword(candidateText, [
@@ -340,10 +571,14 @@ function isValidOpportunityCandidate(params: {
       "istihdam edilmek üzere",
     ]);
 
-    return municipalityJobSignal;
+    return municipalityJobSignal && isStrictJobOpeningText(candidateText);
   }
 
-  if (titleLowered.includes("başvuru") && !jobSignal && !competitionSignal) {
+  if (
+    candidateText.toLocaleLowerCase("tr-TR").includes("başvuru") &&
+    !jobSignal &&
+    !competitionSignal
+  ) {
     return false;
   }
 
@@ -444,17 +679,25 @@ function inferOpportunityType(text: string, sourceName: string) {
 function inferProfessionArea(text: string, fallback: string | null) {
   const lowered = text.toLocaleLowerCase("tr-TR");
 
-  const directMatch = professionAreas.find((profession) =>
-    lowered.includes(profession.toLocaleLowerCase("tr-TR"))
-  );
+  if (containsLowValueJob(lowered)) return "Diğer";
+
+  const planningMatch = containsStrictPlanningKeyword(lowered);
+
+  if (planningMatch) return "Şehir ve Bölge Planlama";
+
+  const directMatch = professionAreas.find((profession) => {
+    const normalizedProfession = profession.toLocaleLowerCase("tr-TR");
+
+    if (normalizedProfession === "şehir ve bölge planlama") {
+      return false;
+    }
+
+    return lowered.includes(normalizedProfession);
+  });
 
   if (directMatch) return directMatch;
 
   const rules: Array<{ area: string; keywords: string[] }> = [
-    {
-      area: "Şehir ve Bölge Planlama",
-      keywords: ["şehir plancısı", "şehir planlama", "bölge planlama", "imar", "planlama"],
-    },
     {
       area: "CBS / GIS",
       keywords: ["cbs", "gis", "coğrafi bilgi", "mekansal veri", "mekânsal veri"],
@@ -519,6 +762,10 @@ function inferProfessionArea(text: string, fallback: string | null) {
 
   if (matchedRule) return matchedRule.area;
 
+  if (fallback === "Şehir ve Bölge Planlama" && !planningMatch) {
+    return "Diğer";
+  }
+
   return fallback || "Diğer";
 }
 
@@ -543,22 +790,15 @@ function inferCity(text: string, fallback: string | null) {
 }
 
 function extractDeadline(text: string) {
-  const dateMatch = text.match(
-    /(\d{1,2})[./-](\d{1,2})[./-](20\d{2})/
-  );
+  const dates = extractAllDates(text);
 
-  if (!dateMatch) return null;
+  if (dates.length === 0) return null;
 
-  const day = dateMatch[1].padStart(2, "0");
-  const month = dateMatch[2].padStart(2, "0");
-  const year = dateMatch[3];
+  const futureDates = dates.filter((date) => !isBeforeToday(date));
 
-  const normalized = `${year}-${month}-${day}`;
-  const date = new Date(`${normalized}T00:00:00.000Z`);
+  if (futureDates.length === 0) return null;
 
-  if (Number.isNaN(date.getTime())) return null;
-
-  return normalized;
+  return futureDates.sort()[0];
 }
 
 function buildDescription(params: {
@@ -799,6 +1039,15 @@ export async function GET(request: Request) {
         }
 
         const contextText = `${link.title} ${source.name} ${page.text.slice(0, 500)}`;
+
+        if (
+          containsResultAnnouncement(contextText) ||
+          containsLowValueJob(contextText) ||
+          !isFreshEnoughCandidate(contextText)
+        ) {
+          continue;
+        }
+
         const opportunityType = inferOpportunityType(contextText, source.name);
         const professionArea = inferProfessionArea(contextText, source.profession_area);
         const city = inferCity(contextText, source.city);
@@ -883,7 +1132,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    mode: "free_job_competition_scan",
+    mode: "free_strict_openings_only_scan",
     runId,
     checkedSources: activeSources.length,
     successfulSources: successCount,
